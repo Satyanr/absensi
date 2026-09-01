@@ -1,0 +1,90 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-absensi}
+      POSTGRES_USER: ${POSTGRES_USER:-absensi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+      TZ: Asia/Jakarta
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-absensi} -d ${POSTGRES_DB:-absensi}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  app:
+    build: .
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    env_file:
+      - .env
+
+    environment:
+      DATABASE_URL: postgresql://absensi:change-me-local-only@postgres:5432/absensi?schema=public
+
+    volumes:
+      - attendance_photos:/app/storage/attendance
+
+    ports:
+      - "3000:3000"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+
+    depends_on:
+      - app
+
+    command: tunnel --no-autoupdate --url http://app:3000
+
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    env_file:
+      - .env
+
+    volumes:
+      - ./storage/backup:/backup
+      - attendance_photos:/photos:ro
+
+    entrypoint: ["/bin/sh", "-c"]
+
+    command: >-
+      while true; do
+        stamp=$$(date +%Y%m%d-%H%M%S);
+        PGPASSWORD=$$POSTGRES_PASSWORD pg_dump
+        -h postgres
+        -U $$POSTGRES_USER
+        -d $$POSTGRES_DB
+        -Fc
+        -f /backup/db-$$stamp.dump;
+        tar -czf /backup/photos-$$stamp.tar.gz -C /photos .;
+        find /backup -type f -mtime +14 -delete;
+        sleep 86400;
+      done
+
+volumes:
+  postgres_data:
+  attendance_photos:

@@ -1,0 +1,10 @@
+node_modules
+.next
+.env
+.env.local
+npm-debug.log*
+coverage
+storage/attendance/*
+!storage/attendance/.gitkeep
+storage/backup/*
+!storage/backup/.gitkeep
