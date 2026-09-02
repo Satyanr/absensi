@@ -250,6 +250,7 @@ export type AttachmentWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Attachment"> | Date | string
   attendanceEvents?: Prisma.AttendanceEventListRelationFilter
   leaveRequests?: Prisma.LeaveRequestListRelationFilter
+  approvedLeaveDocuments?: Prisma.LeaveRequestListRelationFilter
 }
 
 export type AttachmentOrderByWithRelationInput = {
@@ -264,6 +265,7 @@ export type AttachmentOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   attendanceEvents?: Prisma.AttendanceEventOrderByRelationAggregateInput
   leaveRequests?: Prisma.LeaveRequestOrderByRelationAggregateInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestOrderByRelationAggregateInput
 }
 
 export type AttachmentWhereUniqueInput = Prisma.AtLeast<{
@@ -281,6 +283,7 @@ export type AttachmentWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"Attachment"> | Date | string
   attendanceEvents?: Prisma.AttendanceEventListRelationFilter
   leaveRequests?: Prisma.LeaveRequestListRelationFilter
+  approvedLeaveDocuments?: Prisma.LeaveRequestListRelationFilter
 }, "id" | "storagePath" | "legacyFilename">
 
 export type AttachmentOrderByWithAggregationInput = {
@@ -327,6 +330,7 @@ export type AttachmentCreateInput = {
   createdAt?: Date | string
   attendanceEvents?: Prisma.AttendanceEventCreateNestedManyWithoutPhotoInput
   leaveRequests?: Prisma.LeaveRequestCreateNestedManyWithoutAttachmentInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestCreateNestedManyWithoutApprovedDocumentInput
 }
 
 export type AttachmentUncheckedCreateInput = {
@@ -341,6 +345,7 @@ export type AttachmentUncheckedCreateInput = {
   createdAt?: Date | string
   attendanceEvents?: Prisma.AttendanceEventUncheckedCreateNestedManyWithoutPhotoInput
   leaveRequests?: Prisma.LeaveRequestUncheckedCreateNestedManyWithoutAttachmentInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestUncheckedCreateNestedManyWithoutApprovedDocumentInput
 }
 
 export type AttachmentUpdateInput = {
@@ -355,6 +360,7 @@ export type AttachmentUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attendanceEvents?: Prisma.AttendanceEventUpdateManyWithoutPhotoNestedInput
   leaveRequests?: Prisma.LeaveRequestUpdateManyWithoutAttachmentNestedInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestUpdateManyWithoutApprovedDocumentNestedInput
 }
 
 export type AttachmentUncheckedUpdateInput = {
@@ -369,6 +375,7 @@ export type AttachmentUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attendanceEvents?: Prisma.AttendanceEventUncheckedUpdateManyWithoutPhotoNestedInput
   leaveRequests?: Prisma.LeaveRequestUncheckedUpdateManyWithoutAttachmentNestedInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestUncheckedUpdateManyWithoutApprovedDocumentNestedInput
 }
 
 export type AttachmentCreateManyInput = {
@@ -486,6 +493,12 @@ export type AttachmentCreateNestedOneWithoutLeaveRequestsInput = {
   connect?: Prisma.AttachmentWhereUniqueInput
 }
 
+export type AttachmentCreateNestedOneWithoutApprovedLeaveDocumentsInput = {
+  create?: Prisma.XOR<Prisma.AttachmentCreateWithoutApprovedLeaveDocumentsInput, Prisma.AttachmentUncheckedCreateWithoutApprovedLeaveDocumentsInput>
+  connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutApprovedLeaveDocumentsInput
+  connect?: Prisma.AttachmentWhereUniqueInput
+}
+
 export type AttachmentUpdateOneWithoutLeaveRequestsNestedInput = {
   create?: Prisma.XOR<Prisma.AttachmentCreateWithoutLeaveRequestsInput, Prisma.AttachmentUncheckedCreateWithoutLeaveRequestsInput>
   connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutLeaveRequestsInput
@@ -494,6 +507,16 @@ export type AttachmentUpdateOneWithoutLeaveRequestsNestedInput = {
   delete?: Prisma.AttachmentWhereInput | boolean
   connect?: Prisma.AttachmentWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.AttachmentUpdateToOneWithWhereWithoutLeaveRequestsInput, Prisma.AttachmentUpdateWithoutLeaveRequestsInput>, Prisma.AttachmentUncheckedUpdateWithoutLeaveRequestsInput>
+}
+
+export type AttachmentUpdateOneWithoutApprovedLeaveDocumentsNestedInput = {
+  create?: Prisma.XOR<Prisma.AttachmentCreateWithoutApprovedLeaveDocumentsInput, Prisma.AttachmentUncheckedCreateWithoutApprovedLeaveDocumentsInput>
+  connectOrCreate?: Prisma.AttachmentCreateOrConnectWithoutApprovedLeaveDocumentsInput
+  upsert?: Prisma.AttachmentUpsertWithoutApprovedLeaveDocumentsInput
+  disconnect?: Prisma.AttachmentWhereInput | boolean
+  delete?: Prisma.AttachmentWhereInput | boolean
+  connect?: Prisma.AttachmentWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AttachmentUpdateToOneWithWhereWithoutApprovedLeaveDocumentsInput, Prisma.AttachmentUpdateWithoutApprovedLeaveDocumentsInput>, Prisma.AttachmentUncheckedUpdateWithoutApprovedLeaveDocumentsInput>
 }
 
 export type AttachmentCreateWithoutAttendanceEventsInput = {
@@ -507,6 +530,7 @@ export type AttachmentCreateWithoutAttendanceEventsInput = {
   legacyFilename?: string | null
   createdAt?: Date | string
   leaveRequests?: Prisma.LeaveRequestCreateNestedManyWithoutAttachmentInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestCreateNestedManyWithoutApprovedDocumentInput
 }
 
 export type AttachmentUncheckedCreateWithoutAttendanceEventsInput = {
@@ -520,6 +544,7 @@ export type AttachmentUncheckedCreateWithoutAttendanceEventsInput = {
   legacyFilename?: string | null
   createdAt?: Date | string
   leaveRequests?: Prisma.LeaveRequestUncheckedCreateNestedManyWithoutAttachmentInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestUncheckedCreateNestedManyWithoutApprovedDocumentInput
 }
 
 export type AttachmentCreateOrConnectWithoutAttendanceEventsInput = {
@@ -549,6 +574,7 @@ export type AttachmentUpdateWithoutAttendanceEventsInput = {
   legacyFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   leaveRequests?: Prisma.LeaveRequestUpdateManyWithoutAttachmentNestedInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestUpdateManyWithoutApprovedDocumentNestedInput
 }
 
 export type AttachmentUncheckedUpdateWithoutAttendanceEventsInput = {
@@ -562,6 +588,7 @@ export type AttachmentUncheckedUpdateWithoutAttendanceEventsInput = {
   legacyFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   leaveRequests?: Prisma.LeaveRequestUncheckedUpdateManyWithoutAttachmentNestedInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestUncheckedUpdateManyWithoutApprovedDocumentNestedInput
 }
 
 export type AttachmentCreateWithoutLeaveRequestsInput = {
@@ -575,6 +602,7 @@ export type AttachmentCreateWithoutLeaveRequestsInput = {
   legacyFilename?: string | null
   createdAt?: Date | string
   attendanceEvents?: Prisma.AttendanceEventCreateNestedManyWithoutPhotoInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestCreateNestedManyWithoutApprovedDocumentInput
 }
 
 export type AttachmentUncheckedCreateWithoutLeaveRequestsInput = {
@@ -588,11 +616,45 @@ export type AttachmentUncheckedCreateWithoutLeaveRequestsInput = {
   legacyFilename?: string | null
   createdAt?: Date | string
   attendanceEvents?: Prisma.AttendanceEventUncheckedCreateNestedManyWithoutPhotoInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestUncheckedCreateNestedManyWithoutApprovedDocumentInput
 }
 
 export type AttachmentCreateOrConnectWithoutLeaveRequestsInput = {
   where: Prisma.AttachmentWhereUniqueInput
   create: Prisma.XOR<Prisma.AttachmentCreateWithoutLeaveRequestsInput, Prisma.AttachmentUncheckedCreateWithoutLeaveRequestsInput>
+}
+
+export type AttachmentCreateWithoutApprovedLeaveDocumentsInput = {
+  id?: string
+  storageDisk?: string
+  storagePath: string
+  originalFilename?: string | null
+  mimeType: string
+  fileSize: bigint | number
+  checksum: string
+  legacyFilename?: string | null
+  createdAt?: Date | string
+  attendanceEvents?: Prisma.AttendanceEventCreateNestedManyWithoutPhotoInput
+  leaveRequests?: Prisma.LeaveRequestCreateNestedManyWithoutAttachmentInput
+}
+
+export type AttachmentUncheckedCreateWithoutApprovedLeaveDocumentsInput = {
+  id?: string
+  storageDisk?: string
+  storagePath: string
+  originalFilename?: string | null
+  mimeType: string
+  fileSize: bigint | number
+  checksum: string
+  legacyFilename?: string | null
+  createdAt?: Date | string
+  attendanceEvents?: Prisma.AttendanceEventUncheckedCreateNestedManyWithoutPhotoInput
+  leaveRequests?: Prisma.LeaveRequestUncheckedCreateNestedManyWithoutAttachmentInput
+}
+
+export type AttachmentCreateOrConnectWithoutApprovedLeaveDocumentsInput = {
+  where: Prisma.AttachmentWhereUniqueInput
+  create: Prisma.XOR<Prisma.AttachmentCreateWithoutApprovedLeaveDocumentsInput, Prisma.AttachmentUncheckedCreateWithoutApprovedLeaveDocumentsInput>
 }
 
 export type AttachmentUpsertWithoutLeaveRequestsInput = {
@@ -617,6 +679,7 @@ export type AttachmentUpdateWithoutLeaveRequestsInput = {
   legacyFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attendanceEvents?: Prisma.AttendanceEventUpdateManyWithoutPhotoNestedInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestUpdateManyWithoutApprovedDocumentNestedInput
 }
 
 export type AttachmentUncheckedUpdateWithoutLeaveRequestsInput = {
@@ -630,6 +693,46 @@ export type AttachmentUncheckedUpdateWithoutLeaveRequestsInput = {
   legacyFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attendanceEvents?: Prisma.AttendanceEventUncheckedUpdateManyWithoutPhotoNestedInput
+  approvedLeaveDocuments?: Prisma.LeaveRequestUncheckedUpdateManyWithoutApprovedDocumentNestedInput
+}
+
+export type AttachmentUpsertWithoutApprovedLeaveDocumentsInput = {
+  update: Prisma.XOR<Prisma.AttachmentUpdateWithoutApprovedLeaveDocumentsInput, Prisma.AttachmentUncheckedUpdateWithoutApprovedLeaveDocumentsInput>
+  create: Prisma.XOR<Prisma.AttachmentCreateWithoutApprovedLeaveDocumentsInput, Prisma.AttachmentUncheckedCreateWithoutApprovedLeaveDocumentsInput>
+  where?: Prisma.AttachmentWhereInput
+}
+
+export type AttachmentUpdateToOneWithWhereWithoutApprovedLeaveDocumentsInput = {
+  where?: Prisma.AttachmentWhereInput
+  data: Prisma.XOR<Prisma.AttachmentUpdateWithoutApprovedLeaveDocumentsInput, Prisma.AttachmentUncheckedUpdateWithoutApprovedLeaveDocumentsInput>
+}
+
+export type AttachmentUpdateWithoutApprovedLeaveDocumentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  storageDisk?: Prisma.StringFieldUpdateOperationsInput | string
+  storagePath?: Prisma.StringFieldUpdateOperationsInput | string
+  originalFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  fileSize?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  checksum?: Prisma.StringFieldUpdateOperationsInput | string
+  legacyFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  attendanceEvents?: Prisma.AttendanceEventUpdateManyWithoutPhotoNestedInput
+  leaveRequests?: Prisma.LeaveRequestUpdateManyWithoutAttachmentNestedInput
+}
+
+export type AttachmentUncheckedUpdateWithoutApprovedLeaveDocumentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  storageDisk?: Prisma.StringFieldUpdateOperationsInput | string
+  storagePath?: Prisma.StringFieldUpdateOperationsInput | string
+  originalFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  mimeType?: Prisma.StringFieldUpdateOperationsInput | string
+  fileSize?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  checksum?: Prisma.StringFieldUpdateOperationsInput | string
+  legacyFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  attendanceEvents?: Prisma.AttendanceEventUncheckedUpdateManyWithoutPhotoNestedInput
+  leaveRequests?: Prisma.LeaveRequestUncheckedUpdateManyWithoutAttachmentNestedInput
 }
 
 
@@ -640,11 +743,13 @@ export type AttachmentUncheckedUpdateWithoutLeaveRequestsInput = {
 export type AttachmentCountOutputType = {
   attendanceEvents: number
   leaveRequests: number
+  approvedLeaveDocuments: number
 }
 
 export type AttachmentCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   attendanceEvents?: boolean | AttachmentCountOutputTypeCountAttendanceEventsArgs
   leaveRequests?: boolean | AttachmentCountOutputTypeCountLeaveRequestsArgs
+  approvedLeaveDocuments?: boolean | AttachmentCountOutputTypeCountApprovedLeaveDocumentsArgs
 }
 
 /**
@@ -671,6 +776,13 @@ export type AttachmentCountOutputTypeCountLeaveRequestsArgs<ExtArgs extends runt
   where?: Prisma.LeaveRequestWhereInput
 }
 
+/**
+ * AttachmentCountOutputType without action
+ */
+export type AttachmentCountOutputTypeCountApprovedLeaveDocumentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.LeaveRequestWhereInput
+}
+
 
 export type AttachmentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -684,6 +796,7 @@ export type AttachmentSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   createdAt?: boolean
   attendanceEvents?: boolean | Prisma.Attachment$attendanceEventsArgs<ExtArgs>
   leaveRequests?: boolean | Prisma.Attachment$leaveRequestsArgs<ExtArgs>
+  approvedLeaveDocuments?: boolean | Prisma.Attachment$approvedLeaveDocumentsArgs<ExtArgs>
   _count?: boolean | Prisma.AttachmentCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["attachment"]>
 
@@ -727,6 +840,7 @@ export type AttachmentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs
 export type AttachmentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   attendanceEvents?: boolean | Prisma.Attachment$attendanceEventsArgs<ExtArgs>
   leaveRequests?: boolean | Prisma.Attachment$leaveRequestsArgs<ExtArgs>
+  approvedLeaveDocuments?: boolean | Prisma.Attachment$approvedLeaveDocumentsArgs<ExtArgs>
   _count?: boolean | Prisma.AttachmentCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type AttachmentIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -737,6 +851,7 @@ export type $AttachmentPayload<ExtArgs extends runtime.Types.Extensions.Internal
   objects: {
     attendanceEvents: Prisma.$AttendanceEventPayload<ExtArgs>[]
     leaveRequests: Prisma.$LeaveRequestPayload<ExtArgs>[]
+    approvedLeaveDocuments: Prisma.$LeaveRequestPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1144,6 +1259,7 @@ export interface Prisma__AttachmentClient<T, Null = never, ExtArgs extends runti
   readonly [Symbol.toStringTag]: "PrismaPromise"
   attendanceEvents<T extends Prisma.Attachment$attendanceEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Attachment$attendanceEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AttendanceEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   leaveRequests<T extends Prisma.Attachment$leaveRequestsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Attachment$leaveRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LeaveRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  approvedLeaveDocuments<T extends Prisma.Attachment$approvedLeaveDocumentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Attachment$approvedLeaveDocumentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LeaveRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1602,6 +1718,30 @@ export type Attachment$attendanceEventsArgs<ExtArgs extends runtime.Types.Extens
  * Attachment.leaveRequests
  */
 export type Attachment$leaveRequestsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the LeaveRequest
+   */
+  select?: Prisma.LeaveRequestSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the LeaveRequest
+   */
+  omit?: Prisma.LeaveRequestOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.LeaveRequestInclude<ExtArgs> | null
+  where?: Prisma.LeaveRequestWhereInput
+  orderBy?: Prisma.LeaveRequestOrderByWithRelationInput | Prisma.LeaveRequestOrderByWithRelationInput[]
+  cursor?: Prisma.LeaveRequestWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.LeaveRequestScalarFieldEnum | Prisma.LeaveRequestScalarFieldEnum[]
+}
+
+/**
+ * Attachment.approvedLeaveDocuments
+ */
+export type Attachment$approvedLeaveDocumentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
    * Select specific fields to fetch from the LeaveRequest
    */

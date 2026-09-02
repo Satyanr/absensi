@@ -241,8 +241,8 @@ model Attachment {
   createdAt        DateTime @default(now()) @map("created_at")
 
   attendanceEvents       AttendanceEvent[]
-  leaveRequests          LeaveRequest[] @relation("LeaveAttachment")
-  approvedLeaveDocuments LeaveRequest[] @relation("LeaveApprovedDocument")
+  leaveRequests          LeaveRequest[]    @relation("LeaveAttachment")
+  approvedLeaveDocuments LeaveRequest[]    @relation("LeaveApprovedDocument")
 
   @@map("attachments")
 }
@@ -269,32 +269,6 @@ model LeaveRequest {
   approvedDocument Attachment? @relation("LeaveApprovedDocument", fields: [approvedDocumentId], references: [id], onDelete: SetNull)
   approver         User?       @relation("LeaveApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
 
-  @@index([approvedDocumentId])
-  @@index([employeeId, startDate, endDate])
-  @@index([status])
-  @@map("leave_requests")
-}
-
-attachment Attachment? @relation(
-  "LeaveAttachment",
-  fields: [attachmentId],
-  references: [id],
-  onDelete: SetNull
-)
-
-approvedDocument Attachment? @relation(
-  "LeaveApprovedDocument",
-  fields: [approvedDocumentId],
-  references: [id],
-  onDelete: SetNull
-)
-
-approver User? @relation(
-  "LeaveApprover",
-  fields: [approvedBy],
-  references: [id],
-  onDelete: SetNull
-)
   @@index([approvedDocumentId])
   @@index([employeeId, startDate, endDate])
   @@index([status])

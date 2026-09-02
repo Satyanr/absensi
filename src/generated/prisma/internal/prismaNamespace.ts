@@ -1432,6 +1432,7 @@ export const LeaveRequestScalarFieldEnum = {
   reason: 'reason',
   status: 'status',
   attachmentId: 'attachmentId',
+  approvedDocumentId: 'approvedDocumentId',
   submittedAt: 'submittedAt',
   approvedAt: 'approvedAt',
   approvedBy: 'approvedBy',
