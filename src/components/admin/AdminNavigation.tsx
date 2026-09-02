@@ -16,6 +16,10 @@ const navigation = [
     href: "/admin/reports",
     label: "Laporan",
   },
+  {
+    href: "/admin/leaves",
+    label: "Izin & Cuti",
+  },
 ];
 
 export default function AdminNavigation() {
