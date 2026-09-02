@@ -30,6 +30,10 @@ export default function PublicLeavePage() {
 
   const [reason, setReason] = useState("");
 
+  const [attachment, setAttachment] = useState<File | null>(null);
+
+  const [attachmentResetKey, setAttachmentResetKey] = useState(0);
+
   const [lookupLoading, setLookupLoading] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -110,21 +114,26 @@ export default function PublicLeavePage() {
     setSuccess("");
 
     try {
+      const form = new FormData();
+
+      form.append("employeeCode", employee.employeeCode);
+
+      form.append("type", type);
+
+      form.append("startDate", startDate);
+
+      form.append("endDate", endDate);
+
+      form.append("reason", reason);
+
+      if (attachment) {
+        form.append("attachment", attachment);
+      }
+
       const response = await fetch("/api/leaves", {
         method: "POST",
 
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          employeeCode: employee.employeeCode,
-
-          type,
-          startDate,
-          endDate,
-          reason,
-        }),
+        body: form,
       });
 
       const data = await response.json();
@@ -141,6 +150,9 @@ export default function PublicLeavePage() {
       setStartDate("");
       setEndDate("");
       setReason("");
+      setAttachment(null);
+
+      setAttachmentResetKey((value) => value + 1);
     } catch {
       setError("Terjadi masalah jaringan.");
     } finally {
@@ -156,6 +168,9 @@ export default function PublicLeavePage() {
     setStartDate("");
     setEndDate("");
     setReason("");
+    setAttachment(null);
+
+    setAttachmentResetKey((value) => value + 1);
 
     setError("");
     setSuccess("");
@@ -249,9 +264,21 @@ export default function PublicLeavePage() {
 
                   <select
                     value={type}
-                    onChange={(event) =>
-                      setType(event.target.value as LeaveType)
-                    }
+                    onChange={(event) => {
+                      const nextType = event.target.value as LeaveType;
+
+                      setType(nextType);
+
+                      /*
+                       * Cuti biasa tidak perlu
+                       * lampiran.
+                       */
+                      if (nextType === "ANNUAL_LEAVE") {
+                        setAttachment(null);
+
+                        setAttachmentResetKey((value) => value + 1);
+                      }
+                    }}
                     className="mt-2 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3"
                   >
                     <option value="PERMISSION">Izin</option>
@@ -305,6 +332,55 @@ export default function PublicLeavePage() {
                     }
                     className="mt-2 w-full resize-none rounded-xl border border-neutral-300 px-4 py-3"
                   />
+
+                  {type !== "ANNUAL_LEAVE" && (
+                    <div>
+                      <label className="text-sm font-medium">
+                        Lampiran Bukti
+                      </label>
+
+                      <p className="mt-1 text-xs text-neutral-500">
+                        Opsional. Bisa foto bukti, surat dokter, atau PDF.
+                        Maksimal 5 MB.
+                      </p>
+
+                      <input
+                        key={attachmentResetKey}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] ?? null;
+
+                          setError("");
+
+                          if (!file) {
+                            setAttachment(null);
+
+                            return;
+                          }
+
+                          if (file.size > 5 * 1024 * 1024) {
+                            setAttachment(null);
+
+                            setError("Ukuran lampiran maksimal 5 MB.");
+
+                            setAttachmentResetKey((value) => value + 1);
+
+                            return;
+                          }
+
+                          setAttachment(file);
+                        }}
+                        className="mt-2 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-3 text-sm"
+                      />
+
+                      {attachment && (
+                        <div className="mt-2 rounded-xl bg-green-50 p-3 text-sm text-green-700">
+                          ✓ {attachment.name}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

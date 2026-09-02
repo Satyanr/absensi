@@ -17,6 +17,20 @@ function formatDate(value: Date) {
   }).format(value);
 }
 
+function formatFileSize(value: bigint) {
+  const bytes = Number(value);
+
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function typeLabel(type: "PERMISSION" | "SICK" | "ANNUAL_LEAVE") {
   switch (type) {
     case "PERMISSION":
@@ -91,6 +105,15 @@ export default async function LeavesPage() {
           select: {
             employeeCode: true,
             name: true,
+          },
+        },
+
+        attachment: {
+          select: {
+            id: true,
+            originalFilename: true,
+            mimeType: true,
+            fileSize: true,
           },
         },
       },
@@ -189,6 +212,37 @@ export default async function LeavesPage() {
 
                       <p className="mt-1 text-sm">{item.reason}</p>
                     </div>
+
+                    {item.attachment && (
+                      <div className="mt-3 rounded-xl border border-neutral-200 p-3">
+                        <p className="text-xs text-neutral-500">
+                          Lampiran Bukti
+                        </p>
+
+                        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {item.attachment.originalFilename ?? "Lampiran"}
+                            </p>
+
+                            <p className="text-xs text-neutral-500">
+                              {item.attachment.mimeType}
+                              {" • "}
+                              {formatFileSize(item.attachment.fileSize)}
+                            </p>
+                          </div>
+
+                          <a
+                            href={`/api/admin/leaves/${item.id}/attachment`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex shrink-0 justify-center rounded-lg border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-600"
+                          >
+                            Lihat Lampiran
+                          </a>
+                        </div>
+                      </div>
+                    )}
 
                     {item.status === "PENDING" && (
                       <LeaveReviewActions leaveRequestId={item.id} />

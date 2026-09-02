@@ -349,7 +349,7 @@ export default async function ReportsPage({ searchParams }: Props) {
 
     source: "ATTENDANCE" as const,
 
-    reportDate: item.reportDate,
+    reportDate: item.attendanceDate,
 
     attendanceMode: item.attendanceMode,
 

@@ -11,6 +11,10 @@ import {
   prisma,
 } from "@/lib/prisma";
 
+import {
+  expandApprovedLeaveRows,
+} from "@/lib/reports/leave";
+
 function isValidDateInput(
   value: string
 ) {
@@ -74,10 +78,16 @@ function formatTime(
 }
 
 function checkInLabel(
-  mode: "OFFICE" | "PROJECT",
-  status: string | null
+  mode:
+    | "OFFICE"
+    | "PROJECT",
+
+  status:
+    string | null
 ) {
-  if (mode === "PROJECT") {
+  if (
+    mode === "PROJECT"
+  ) {
     return "In Project";
   }
 
@@ -100,10 +110,16 @@ function checkInLabel(
 }
 
 function checkOutLabel(
-  mode: "OFFICE" | "PROJECT",
-  status: string | null
+  mode:
+    | "OFFICE"
+    | "PROJECT",
+
+  status:
+    string | null
 ) {
-  if (mode === "PROJECT") {
+  if (
+    mode === "PROJECT"
+  ) {
     return "Tidak perlu pulang";
   }
 
@@ -125,7 +141,25 @@ function checkOutLabel(
   }
 }
 
-function getDescription(
+function leaveLabel(
+  type:
+    | "PERMISSION"
+    | "SICK"
+    | "ANNUAL_LEAVE"
+) {
+  switch (type) {
+    case "PERMISSION":
+      return "Izin";
+
+    case "SICK":
+      return "Sakit";
+
+    case "ANNUAL_LEAVE":
+      return "Cuti";
+  }
+}
+
+function getAttendanceDescription(
   item: {
     attendanceMode:
       | "OFFICE"
@@ -188,9 +222,9 @@ function getDescription(
 }
 
 /*
- * Proteksi CSV / Excel:
- * - escape tanda kutip
- * - cegah formula injection
+ * Proteksi:
+ * - CSV escaping
+ * - formula injection Excel
  */
 function csvValue(
   value:
@@ -221,9 +255,9 @@ export async function GET(
   request: NextRequest
 ) {
   /*
-   * ======================
+   * =====================
    * AUTH
-   * ======================
+   * =====================
    */
 
   const user =
@@ -256,9 +290,9 @@ export async function GET(
   }
 
   /*
-   * ======================
+   * =====================
    * FILTER
-   * ======================
+   * =====================
    */
 
   const searchParams =
@@ -288,12 +322,8 @@ export async function GET(
   if (
     !from ||
     !to ||
-    !isValidDateInput(
-      from
-    ) ||
-    !isValidDateInput(
-      to
-    )
+    !isValidDateInput(from) ||
+    !isValidDateInput(to)
   ) {
     return NextResponse.json(
       {
@@ -359,11 +389,8 @@ export async function GET(
   }
 
   /*
-   * Jika filter employee dipakai,
-   * pastikan employee ada.
-   *
-   * Karyawan nonaktif tetap boleh
-   * ditarik untuk histori.
+   * Employee nonaktif tetap
+   * boleh ditarik untuk histori.
    */
   let selectedEmployee:
     | {
@@ -376,7 +403,8 @@ export async function GET(
     selectedEmployee =
       await prisma.employee.findUnique({
         where: {
-          id: employeeId,
+          id:
+            employeeId,
         },
 
         select: {
@@ -401,17 +429,20 @@ export async function GET(
   }
 
   /*
-   * ======================
-   * QUERY DATABASE
-   * ======================
+   * =====================
+   * ATTENDANCE
+   * =====================
    */
 
-  const records =
+  const attendanceRecords =
     await prisma.attendanceDay.findMany({
       where: {
         attendanceDate: {
-          gte: fromDate,
-          lte: toDate,
+          gte:
+            fromDate,
+
+          lte:
+            toDate,
         },
 
         ...(employeeId
@@ -429,6 +460,8 @@ export async function GET(
       },
 
       select: {
+        id: true,
+
         attendanceDate:
           true,
 
@@ -461,6 +494,8 @@ export async function GET(
 
         employee: {
           select: {
+            id: true,
+
             employeeCode:
               true,
 
@@ -472,25 +507,149 @@ export async function GET(
           },
         },
       },
-
-      orderBy: [
-        {
-          attendanceDate:
-            "asc",
-        },
-
-        {
-          employee: {
-            name: "asc",
-          },
-        },
-      ],
     });
 
   /*
-   * ======================
+   * =====================
+   * LEAVE
+   * =====================
+   *
+   * Leave hanya masuk kalau
+   * filter mode = Semua Mode.
+   *
+   * Hanya APPROVED.
+   */
+
+  const leaveRequests =
+    mode
+      ? []
+      : await prisma.leaveRequest.findMany({
+          where: {
+            status:
+              "APPROVED",
+
+            startDate: {
+              lte:
+                toDate,
+            },
+
+            endDate: {
+              gte:
+                fromDate,
+            },
+
+            ...(employeeId
+              ? {
+                  employeeId,
+                }
+              : {}),
+          },
+
+          select: {
+            id: true,
+            type: true,
+            startDate: true,
+            endDate: true,
+            reason: true,
+
+            employee: {
+              select: {
+                id: true,
+
+                employeeCode:
+                  true,
+
+                name:
+                  true,
+
+                active:
+                  true,
+              },
+            },
+          },
+        });
+
+  /*
+   * =====================
+   * NORMALISASI
+   * =====================
+   */
+
+  const attendanceRows =
+    attendanceRecords.map(
+      (item) => ({
+        id:
+          `attendance:${item.id}`,
+
+        source:
+          "ATTENDANCE" as const,
+
+        reportDate:
+          item.attendanceDate,
+
+        attendanceMode:
+          item.attendanceMode,
+
+        checkInAt:
+          item.checkInAt,
+
+        checkOutAt:
+          item.checkOutAt,
+
+        checkInStatus:
+          item.checkInStatus,
+
+        checkOutStatus:
+          item.checkOutStatus,
+
+        lateMinutes:
+          item.lateMinutes,
+
+        earlyLeaveMinutes:
+          item.earlyLeaveMinutes,
+
+        overtimeMinutes:
+          item.overtimeMinutes,
+
+        notes:
+          item.notes,
+
+        employee:
+          item.employee,
+      })
+    );
+
+  const leaveRows =
+    expandApprovedLeaveRows(
+      leaveRequests,
+      fromDate,
+      toDate
+    );
+
+  const reportRows = [
+    ...attendanceRows,
+    ...leaveRows,
+  ].sort((a, b) => {
+    const dateDifference =
+      a.reportDate.getTime() -
+      b.reportDate.getTime();
+
+    if (
+      dateDifference !== 0
+    ) {
+      return dateDifference;
+    }
+
+    return a.employee.name.localeCompare(
+      b.employee.name,
+      "id"
+    );
+  });
+
+  /*
+   * =====================
    * CSV
-   * ======================
+   * =====================
    */
 
   const header = [
@@ -510,66 +669,106 @@ export async function GET(
   ];
 
   const rows =
-    records.map(
-      (item) => [
-        formatDate(
-          item.attendanceDate
-        ),
-
-        item.employee
-          .employeeCode,
-
-        item.employee.name,
-
-        item.employee.active
-          ? "Aktif"
-          : "Nonaktif",
-
-        item.attendanceMode ===
-        "PROJECT"
-          ? "In Project"
-          : "Kantor",
-
-        formatTime(
-          item.checkInAt
-        ),
-
-        checkInLabel(
-          item.attendanceMode,
-          item.checkInStatus
-        ),
-
-        item.lateMinutes,
-
-        item.attendanceMode ===
-        "PROJECT"
-          ? ""
-          : formatTime(
-              item.checkOutAt
+    reportRows.map(
+      (item) => {
+        if (
+          item.source ===
+          "ATTENDANCE"
+        ) {
+          return [
+            formatDate(
+              item.reportDate
             ),
 
-        checkOutLabel(
-          item.attendanceMode,
-          item.checkOutStatus
-        ),
+            item.employee
+              .employeeCode,
 
-        item.earlyLeaveMinutes,
+            item.employee
+              .name,
 
-        item.overtimeMinutes,
+            item.employee
+              .active
+              ? "Aktif"
+              : "Nonaktif",
 
-        getDescription(
-          item
-        ),
-      ]
+            item.attendanceMode ===
+            "PROJECT"
+              ? "In Project"
+              : "Kantor",
+
+            formatTime(
+              item.checkInAt
+            ),
+
+            checkInLabel(
+              item.attendanceMode,
+              item.checkInStatus
+            ),
+
+            item.lateMinutes,
+
+            item.attendanceMode ===
+            "PROJECT"
+              ? ""
+              : formatTime(
+                  item.checkOutAt
+                ),
+
+            checkOutLabel(
+              item.attendanceMode,
+              item.checkOutStatus
+            ),
+
+            item.earlyLeaveMinutes,
+
+            item.overtimeMinutes,
+
+            getAttendanceDescription(
+              item
+            ),
+          ];
+        }
+
+        /*
+         * Izin / Sakit / Cuti
+         */
+        return [
+          formatDate(
+            item.reportDate
+          ),
+
+          item.employee
+            .employeeCode,
+
+          item.employee.name,
+
+          item.employee.active
+            ? "Aktif"
+            : "Nonaktif",
+
+          leaveLabel(
+            item.leaveType
+          ),
+
+          "",
+
+          "Disetujui",
+
+          "",
+
+          "",
+
+          "",
+
+          "",
+
+          "",
+
+          item.reason,
+        ];
+      }
     );
 
-  /*
-   * Kita pakai ; sebagai separator.
-   *
-   * Ini biasanya lebih nyaman
-   * untuk Excel dengan regional
-   * setting Indonesia.
-   */
   const separator = ";";
 
   const csv = [
@@ -586,16 +785,15 @@ export async function GET(
   ].join("\r\n");
 
   /*
-   * UTF-8 BOM agar karakter
-   * Indonesia aman di Excel.
+   * UTF-8 BOM untuk Excel.
    */
   const content =
     `\uFEFF${csv}`;
 
   /*
-   * ======================
+   * =====================
    * FILENAME
-   * ======================
+   * =====================
    */
 
   const filenameParts = [

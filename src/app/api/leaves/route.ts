@@ -3,20 +3,29 @@ import {
   NextResponse,
 } from "next/server";
 
-import { prisma } from "@/lib/prisma";
+import {
+  prisma,
+} from "@/lib/prisma";
 
 import {
   createPublicLeaveRequestSchema,
 } from "@/lib/validation/leave";
 
+import {
+  allowedLeaveAttachmentMimeTypes,
+  getLeaveAttachmentMaxBytes,
+  removeLeaveAttachment,
+  saveLeaveAttachment,
+} from "@/lib/storage/leave-attachment";
+
 export async function POST(
   request: NextRequest
 ) {
-  let body: unknown;
+  let form: FormData;
 
   try {
-    body =
-      await request.json();
+    form =
+      await request.formData();
   } catch {
     return NextResponse.json(
       {
@@ -30,9 +39,28 @@ export async function POST(
   }
 
   const parsed =
-    createPublicLeaveRequestSchema.safeParse(
-      body
-    );
+    createPublicLeaveRequestSchema.safeParse({
+      employeeCode:
+        form.get(
+          "employeeCode"
+        ),
+
+      type:
+        form.get("type"),
+
+      startDate:
+        form.get(
+          "startDate"
+        ),
+
+      endDate:
+        form.get(
+          "endDate"
+        ),
+
+      reason:
+        form.get("reason"),
+    });
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -50,10 +78,59 @@ export async function POST(
   }
 
   /*
-   * Cari employee dari kode.
-   * Employee nonaktif tidak boleh
-   * membuat pengajuan baru.
+   * =========================
+   * ATTACHMENT
+   * =========================
    */
+
+  const attachmentValue =
+    form.get("attachment");
+
+  const attachment =
+    attachmentValue instanceof File &&
+    attachmentValue.size > 0
+      ? attachmentValue
+      : null;
+
+  if (attachment) {
+    if (
+      !allowedLeaveAttachmentMimeTypes.includes(
+        attachment.type
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Format lampiran tidak didukung. Gunakan JPG, PNG, WEBP, HEIC, HEIF, atau PDF.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      attachment.size >
+      getLeaveAttachmentMaxBytes()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Ukuran lampiran terlalu besar. Maksimal 5 MB.",
+        },
+        {
+          status: 413,
+        }
+      );
+    }
+  }
+
+  /*
+   * =========================
+   * EMPLOYEE
+   * =========================
+   */
+
   const employee =
     await prisma.employee.findFirst({
       where: {
@@ -63,7 +140,8 @@ export async function POST(
           equals:
             parsed.data.employeeCode,
 
-          mode: "insensitive",
+          mode:
+            "insensitive",
         },
       },
 
@@ -87,11 +165,6 @@ export async function POST(
     );
   }
 
-  /*
-   * Hanya employee yang punya
-   * hak cuti boleh mengajukan
-   * ANNUAL_LEAVE.
-   */
   if (
     parsed.data.type ===
       "ANNUAL_LEAVE" &&
@@ -119,11 +192,11 @@ export async function POST(
     );
 
   /*
-   * Cegah pengajuan bertumpuk.
-   *
-   * REJECTED dan CANCELLED
-   * tidak dianggap aktif.
+   * =========================
+   * CEK OVERLAP
+   * =========================
    */
+
   const overlapping =
     await prisma.leaveRequest.findFirst({
       where: {
@@ -138,11 +211,13 @@ export async function POST(
         },
 
         startDate: {
-          lte: endDate,
+          lte:
+            endDate,
         },
 
         endDate: {
-          gte: startDate,
+          gte:
+            startDate,
         },
       },
 
@@ -163,10 +238,72 @@ export async function POST(
     );
   }
 
+  /*
+   * File disimpan setelah semua
+   * validasi awal lolos.
+   */
+  let storedAttachment:
+    | Awaited<
+        ReturnType<
+          typeof saveLeaveAttachment
+        >
+      >
+    | null = null;
+
   try {
+    if (attachment) {
+      storedAttachment =
+        await saveLeaveAttachment(
+          attachment
+        );
+    }
+
     const leaveRequest =
       await prisma.$transaction(
         async (tx) => {
+          let attachmentId:
+            | string
+            | null = null;
+
+          if (
+            storedAttachment
+          ) {
+            const createdAttachment =
+              await tx.attachment.create({
+                data: {
+                  storageDisk:
+                    "local",
+
+                  storagePath:
+                    storedAttachment
+                      .storagePath,
+
+                  originalFilename:
+                    storedAttachment
+                      .originalFilename,
+
+                  mimeType:
+                    storedAttachment
+                      .mimeType,
+
+                  fileSize:
+                    storedAttachment
+                      .fileSize,
+
+                  checksum:
+                    storedAttachment
+                      .checksum,
+                },
+
+                select: {
+                  id: true,
+                },
+              });
+
+            attachmentId =
+              createdAttachment.id;
+          }
+
           const created =
             await tx.leaveRequest.create({
               data: {
@@ -182,10 +319,11 @@ export async function POST(
                 reason:
                   parsed.data.reason,
 
+                attachmentId,
+
                 /*
-                 * Pengajuan publik
-                 * TIDAK PERNAH langsung
-                 * approved.
+                 * Public submission
+                 * SELALU PENDING.
                  */
                 status:
                   "PENDING",
@@ -198,16 +336,11 @@ export async function POST(
                 endDate: true,
                 reason: true,
                 status: true,
+                attachmentId: true,
                 submittedAt: true,
               },
             });
 
-          /*
-           * Tetap simpan audit.
-           *
-           * actorId null karena
-           * employee tidak login.
-           */
           await tx.auditLog.create({
             data: {
               actorId: null,
@@ -252,6 +385,25 @@ export async function POST(
 
                 status:
                   created.status,
+
+                attachmentId:
+                  created.attachmentId,
+
+                attachment:
+                  storedAttachment
+                    ? {
+                        originalFilename:
+                          storedAttachment.originalFilename,
+
+                        mimeType:
+                          storedAttachment.mimeType,
+
+                        fileSize:
+                          Number(
+                            storedAttachment.fileSize
+                          ),
+                      }
+                    : null,
               },
 
               ipAddress:
@@ -284,6 +436,18 @@ export async function POST(
       }
     );
   } catch (error) {
+    /*
+     * Jangan tinggalkan orphan
+     * file jika DB gagal.
+     */
+    if (
+      storedAttachment
+    ) {
+      await removeLeaveAttachment(
+        storedAttachment.absolutePath
+      );
+    }
+
     console.error(error);
 
     return NextResponse.json(
