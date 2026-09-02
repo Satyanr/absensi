@@ -8,6 +8,7 @@ import {
   AttendanceEventType,
   AttendanceMode,
   CheckInStatus,
+  Prisma,
 } from "@/generated/prisma/client";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -278,135 +279,172 @@ export async function POST(request: NextRequest) {
   await writeFile(absolutePath, bytes);
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      /*
-       * Satu employee hanya memiliki
-       * satu AttendanceDay per tanggal.
-       */
-      const attendanceDay = await tx.attendanceDay.upsert({
-        where: {
-          employeeId_attendanceDate: {
+    const result = await prisma.$transaction(
+      async (tx) => {
+        /*
+         * =========================
+         * CEK LEAVE APPROVED
+         * =========================
+         *
+         * Employee yang sudah memiliki
+         * Izin/Sakit/Cuti APPROVED pada
+         * hari ini tidak boleh check-in.
+         */
+        const approvedLeave = await tx.leaveRequest.findFirst({
+          where: {
+            employeeId: employee.id,
+
+            status: "APPROVED",
+
+            startDate: {
+              lte: attendanceDate,
+            },
+
+            endDate: {
+              gte: attendanceDate,
+            },
+          },
+
+          select: {
+            type: true,
+          },
+        });
+
+        if (approvedLeave) {
+          throw new Error(`APPROVED_LEAVE_CONFLICT:${approvedLeave.type}`);
+        }
+        /*
+         * Satu employee hanya memiliki
+         * satu AttendanceDay per tanggal.
+         */
+        const attendanceDay = await tx.attendanceDay.upsert({
+          where: {
+            employeeId_attendanceDate: {
+              employeeId: employee.id,
+
+              attendanceDate,
+            },
+          },
+
+          update: {},
+
+          create: {
             employeeId: employee.id,
 
             attendanceDate,
+
+            attendanceMode,
+
+            status: AttendanceDayStatus.PRESENT,
           },
-        },
+        });
 
-        update: {},
+        /*
+         * Jangan mengizinkan record
+         * yang sudah ada berubah mode.
+         *
+         * Misalnya:
+         * pagi sudah OFFICE,
+         * lalu mencoba PROJECT.
+         */
+        if (attendanceDay.attendanceMode !== attendanceMode) {
+          throw new Error("ATTENDANCE_MODE_CONFLICT");
+        }
 
-        create: {
-          employeeId: employee.id,
+        /*
+         * Atomic check-in.
+         *
+         * Hanya berhasil jika
+         * checkInAt masih NULL.
+         */
+        const updated = await tx.attendanceDay.updateMany({
+          where: {
+            id: attendanceDay.id,
 
-          attendanceDate,
+            checkInAt: null,
+          },
 
-          attendanceMode,
+          data: {
+            checkInAt: serverReceivedAt,
 
-          status: AttendanceDayStatus.PRESENT,
-        },
-      });
+            checkInStatus: evaluation.status,
 
-      /*
-       * Jangan mengizinkan record
-       * yang sudah ada berubah mode.
-       *
-       * Misalnya:
-       * pagi sudah OFFICE,
-       * lalu mencoba PROJECT.
-       */
-      if (attendanceDay.attendanceMode !== attendanceMode) {
-        throw new Error("ATTENDANCE_MODE_CONFLICT");
-      }
+            lateMinutes: evaluation.lateMinutes,
 
-      /*
-       * Atomic check-in.
-       *
-       * Hanya berhasil jika
-       * checkInAt masih NULL.
-       */
-      const updated = await tx.attendanceDay.updateMany({
-        where: {
-          id: attendanceDay.id,
+            attendanceMode,
+          },
+        });
 
-          checkInAt: null,
-        },
+        if (updated.count !== 1) {
+          throw new DuplicateCheckInError();
+        }
 
-        data: {
-          checkInAt: serverReceivedAt,
+        /*
+         * Metadata selfie.
+         */
+        const attachment = await tx.attachment.create({
+          data: {
+            storageDisk: "local",
 
-          checkInStatus: evaluation.status,
+            storagePath: relativePath,
 
-          lateMinutes: evaluation.lateMinutes,
+            originalFilename: photo.name || null,
 
-          attendanceMode,
-        },
-      });
+            mimeType: photo.type,
 
-      if (updated.count !== 1) {
-        throw new DuplicateCheckInError();
-      }
+            fileSize: BigInt(photo.size),
 
-      /*
-       * Metadata selfie.
-       */
-      const attachment = await tx.attachment.create({
-        data: {
-          storageDisk: "local",
+            checksum,
+          },
+        });
 
-          storagePath: relativePath,
+        /*
+         * Raw attendance event.
+         */
+        await tx.attendanceEvent.create({
+          data: {
+            attendanceDayId: attendanceDay.id,
 
-          originalFilename: photo.name || null,
+            employeeId: employee.id,
 
-          mimeType: photo.type,
+            attendanceMode,
 
-          fileSize: BigInt(photo.size),
+            eventType: AttendanceEventType.CHECK_IN,
 
-          checksum,
-        },
-      });
+            clientCapturedAt: new Date(parsed.data.clientCapturedAt),
 
-      /*
-       * Raw attendance event.
-       */
-      await tx.attendanceEvent.create({
-        data: {
+            serverReceivedAt,
+
+            latitude: parsed.data.latitude ?? null,
+
+            longitude: parsed.data.longitude ?? null,
+
+            locationAccuracy: parsed.data.accuracy ?? null,
+
+            locationCapturedAt: parsed.data.locationCapturedAt
+              ? new Date(parsed.data.locationCapturedAt)
+              : null,
+
+            photoId: attachment.id,
+
+            source: parsed.data.source,
+
+            deviceInfo: {
+              userAgent: request.headers.get("user-agent"),
+
+              forwardedFor: request.headers.get("x-forwarded-for"),
+            },
+          },
+        });
+
+        return {
           attendanceDayId: attendanceDay.id,
-
-          employeeId: employee.id,
-
-          attendanceMode,
-
-          eventType: AttendanceEventType.CHECK_IN,
-
-          clientCapturedAt: new Date(parsed.data.clientCapturedAt),
-
-          serverReceivedAt,
-
-          latitude: parsed.data.latitude ?? null,
-
-          longitude: parsed.data.longitude ?? null,
-
-          locationAccuracy: parsed.data.accuracy ?? null,
-
-          locationCapturedAt: parsed.data.locationCapturedAt
-            ? new Date(parsed.data.locationCapturedAt)
-            : null,
-
-          photoId: attachment.id,
-
-          source: parsed.data.source,
-
-          deviceInfo: {
-            userAgent: request.headers.get("user-agent"),
-
-            forwardedFor: request.headers.get("x-forwarded-for"),
-          },
-        },
-      });
-
-      return {
-        attendanceDayId: attendanceDay.id,
-      };
-    });
+        };
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      },
+    );
 
     return NextResponse.json({
       ok: true,
@@ -443,6 +481,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Karyawan sudah melakukan absensi hari ini.",
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message.startsWith("APPROVED_LEAVE_CONFLICT:")
+    ) {
+      const leaveType = error.message.split(":")[1];
+
+      const label =
+        leaveType === "SICK"
+          ? "Sakit"
+          : leaveType === "PERMISSION"
+            ? "Izin"
+            : "Cuti";
+
+      return NextResponse.json(
+        {
+          error: `Absensi tidak dapat dilakukan karena Anda memiliki ${label} yang sudah disetujui untuk hari ini.`,
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Data absensi berubah bersamaan dengan pengajuan izin/cuti. Silakan coba kembali.",
         },
         {
           status: 409,

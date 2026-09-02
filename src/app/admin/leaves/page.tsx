@@ -216,7 +216,9 @@ export default async function LeavesPage() {
                     {item.attachment && (
                       <div className="mt-3 rounded-xl border border-neutral-200 p-3">
                         <p className="text-xs text-neutral-500">
-                          Lampiran Bukti
+                          {item.type === "ANNUAL_LEAVE"
+                            ? "Form Cuti Pemohon"
+                            : "Lampiran Bukti"}
                         </p>
 
                         <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -238,7 +240,9 @@ export default async function LeavesPage() {
                             rel="noopener noreferrer"
                             className="inline-flex shrink-0 justify-center rounded-lg border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-600"
                           >
-                            Lihat Lampiran
+                            {item.type === "ANNUAL_LEAVE"
+                              ? "Download Form Cuti"
+                              : "Lihat Lampiran"}
                           </a>
                         </div>
                       </div>

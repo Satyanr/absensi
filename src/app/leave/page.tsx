@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { useSearchParams } from "next/navigation";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 
 type Employee = {
   employeeCode: string;
@@ -13,7 +13,7 @@ type Employee = {
 
 type LeaveType = "PERMISSION" | "SICK" | "ANNUAL_LEAVE";
 
-export default function PublicLeavePage() {
+function PublicLeaveContent() {
   const searchParams = useSearchParams();
 
   const initialEmployeeCode = searchParams.get("employeeCode");
@@ -33,6 +33,8 @@ export default function PublicLeavePage() {
   const [attachment, setAttachment] = useState<File | null>(null);
 
   const [attachmentResetKey, setAttachmentResetKey] = useState(0);
+
+  const [templateDownloading, setTemplateDownloading] = useState(false);
 
   const [lookupLoading, setLookupLoading] = useState(false);
 
@@ -160,6 +162,87 @@ export default function PublicLeavePage() {
     }
   }
 
+  async function downloadAnnualLeaveForm() {
+    if (!employee) {
+      return;
+    }
+
+    if (!startDate || !endDate) {
+      setError("Isi tanggal mulai dan tanggal selesai terlebih dahulu.");
+
+      return;
+    }
+
+    if (reason.trim().length < 3) {
+      setError("Isi alasan cuti terlebih dahulu.");
+
+      return;
+    }
+
+    if (templateDownloading) {
+      return;
+    }
+
+    setTemplateDownloading(true);
+
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await fetch("/api/leaves/annual-form", {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          employeeCode: employee.employeeCode,
+
+          startDate,
+          endDate,
+          reason,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+
+        setError(data?.error ?? "Gagal membuat Form Pengajuan Cuti.");
+
+        return;
+      }
+
+      const blob = await response.blob();
+
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = url;
+
+      link.download = `Form-Cuti-${employee.employeeCode}-${startDate}.docx`;
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      /*
+       * Beri Safari sedikit waktu
+       * sebelum blob URL dibuang.
+       */
+      window.setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+    } catch {
+      setError("Terjadi masalah jaringan saat membuat form cuti.");
+    } finally {
+      setTemplateDownloading(false);
+    }
+  }
+
   function resetEmployee() {
     setEmployee(null);
     setEmployeeCode("");
@@ -270,14 +353,15 @@ export default function PublicLeavePage() {
                       setType(nextType);
 
                       /*
-                       * Cuti biasa tidak perlu
-                       * lampiran.
+                       * Jangan sampai file Cuti
+                       * terbawa ke Izin/Sakit
+                       * atau sebaliknya.
                        */
-                      if (nextType === "ANNUAL_LEAVE") {
-                        setAttachment(null);
+                      setAttachment(null);
 
-                        setAttachmentResetKey((value) => value + 1);
-                      }
+                      setAttachmentResetKey((value) => value + 1);
+
+                      setError("");
                     }}
                     className="mt-2 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3"
                   >
@@ -381,6 +465,105 @@ export default function PublicLeavePage() {
                       )}
                     </div>
                   )}
+
+                  {type === "ANNUAL_LEAVE" && (
+                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                      <p className="font-medium text-blue-900">
+                        Form Pengajuan Cuti
+                      </p>
+
+                      <p className="mt-1 text-sm text-blue-800">
+                        Isi tanggal dan alasan di atas, lalu download form Word
+                        yang sudah diisi sebagian oleh sistem.
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={downloadAnnualLeaveForm}
+                        disabled={
+                          templateDownloading ||
+                          !startDate ||
+                          !endDate ||
+                          reason.trim().length < 3
+                        }
+                        className="mt-4 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        {templateDownloading
+                          ? "Membuat Form..."
+                          : "Download Form Cuti"}
+                      </button>
+
+                      <div className="mt-5 border-t border-blue-200 pt-4">
+                        <label className="text-sm font-semibold text-blue-950">
+                          Upload Form yang Sudah Dilengkapi
+                        </label>
+
+                        <p className="mt-1 text-xs leading-5 text-blue-800">
+                          Setelah form Word dilengkapi, upload kembali file
+                          .docx di sini. File ini akan diteruskan ke admin untuk
+                          proses persetujuan.
+                        </p>
+
+                        <input
+                          key={attachmentResetKey}
+                          type="file"
+                          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0] ?? null;
+
+                            setError("");
+
+                            if (!file) {
+                              setAttachment(null);
+
+                              return;
+                            }
+
+                            const validExtension = file.name
+                              .toLowerCase()
+                              .endsWith(".docx");
+
+                            if (!validExtension) {
+                              setAttachment(null);
+
+                              setError(
+                                "Form Cuti harus berupa file Word .docx.",
+                              );
+
+                              setAttachmentResetKey((value) => value + 1);
+
+                              return;
+                            }
+
+                            if (file.size > 5 * 1024 * 1024) {
+                              setAttachment(null);
+
+                              setError("Ukuran Form Cuti maksimal 5 MB.");
+
+                              setAttachmentResetKey((value) => value + 1);
+
+                              return;
+                            }
+
+                            setAttachment(file);
+                          }}
+                          className="mt-3 block w-full rounded-xl border border-blue-200 bg-white px-3 py-3 text-sm"
+                        />
+
+                        {attachment && (
+                          <div className="mt-3 rounded-xl bg-green-100 p-3 text-sm font-medium text-green-800">
+                            ✓ {attachment.name}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-3 text-xs leading-5 text-blue-800">
+                        Jabatan, Departemen, Alamat Selama Cuti, No. HP,
+                        Pengganti Tugas, dan tanda tangan masih dilengkapi
+                        manual di Word.
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -391,10 +574,16 @@ export default function PublicLeavePage() {
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={
+                  submitting || (type === "ANNUAL_LEAVE" && !attachment)
+                }
                 className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50"
               >
-                {submitting ? "Mengirim..." : "Kirim Pengajuan"}
+                {submitting
+                  ? "Mengirim..."
+                  : type === "ANNUAL_LEAVE" && !attachment
+                    ? "Upload Form Cuti Terlebih Dahulu"
+                    : "Kirim Pengajuan"}
               </button>
             </form>
           </>
@@ -407,5 +596,27 @@ export default function PublicLeavePage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function LeavePageFallback() {
+  return (
+    <main className="min-h-screen bg-neutral-100 px-4 py-8">
+      <div className="mx-auto max-w-md">
+        <div className="rounded-2xl bg-white p-6 text-center shadow-sm">
+          <p className="text-sm text-neutral-500">
+            Memuat halaman pengajuan...
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+export default function PublicLeavePage() {
+  return (
+    <Suspense fallback={<LeavePageFallback />}>
+      <PublicLeaveContent />
+    </Suspense>
   );
 }

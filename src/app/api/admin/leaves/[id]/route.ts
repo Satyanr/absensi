@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { Prisma } from "@/generated/prisma/client";
+
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/session";
@@ -165,156 +167,160 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       : [];
 
   try {
-    const updated = await prisma.$transaction(async (tx) => {
-      /*
-       * Cek semua saldo SEBELUM
-       * mengubah LeaveRequest.
-       */
-      for (const usage of leaveUsage) {
-        const balance = await tx.leaveBalance.findUnique({
-          where: {
-            employeeId_year: {
-              employeeId: existing.employeeId,
-
-              year: usage.year,
-            },
-          },
-        });
-
-        if (!balance) {
-          throw new Error(`BALANCE_MISSING:${usage.year}`);
-        }
-
-        const available =
-          balance.entitlement +
-          balance.carriedOver +
-          balance.adjusted -
-          balance.used;
-
-        if (available < usage.days) {
-          throw new Error(
-            `BALANCE_INSUFFICIENT:${usage.year}:${available}:${usage.days}`,
-          );
-        }
-      }
-
-      /*
-       * Update hanya jika masih
-       * PENDING.
-       *
-       * Melindungi dari double
-       * click / dua admin.
-       */
-      const updateResult = await tx.leaveRequest.updateMany({
-        where: {
-          id: existing.id,
-
-          status: "PENDING",
-        },
-
-        data: {
-          status: isApprove ? "APPROVED" : "REJECTED",
-
-          approvedAt: isApprove ? new Date() : null,
-
-          approvedBy: isApprove ? user.id : null,
-        },
-      });
-
-      if (updateResult.count !== 1) {
-        throw new Error("ALREADY_REVIEWED");
-      }
-
-      /*
-       * Kurangi saldo secara atomik.
-       *
-       * Kondisi `used <= maximumUsed`
-       * membuat dua approval bersamaan
-       * tidak bisa memakai saldo lama
-       * yang sama.
-       */
-      for (const usage of leaveUsage) {
-        const balance = await tx.leaveBalance.findUnique({
-          where: {
-            employeeId_year: {
-              employeeId: existing.employeeId,
-
-              year: usage.year,
-            },
-          },
-
-          select: {
-            id: true,
-            entitlement: true,
-            carriedOver: true,
-            adjusted: true,
-            used: true,
-          },
-        });
-
-        if (!balance) {
-          throw new Error(`BALANCE_MISSING:${usage.year}`);
-        }
-
-        const totalAvailable =
-          balance.entitlement + balance.carriedOver + balance.adjusted;
-
-        const available = totalAvailable - balance.used;
-
-        if (available < usage.days) {
-          throw new Error(
-            `BALANCE_INSUFFICIENT:${usage.year}:${available}:${usage.days}`,
-          );
-        }
-
+    const updated = await prisma.$transaction(
+      async (tx) => {
         /*
-         * Contoh:
-         *
-         * total hak = 12
-         * cuti yang akan dipakai = 3
-         *
-         * used sebelum approval
-         * maksimal harus 9.
+         * =========================
+         * DOKUMEN FINAL CUTI
+         * =========================
          */
-        const maximumUsed = totalAvailable - usage.days;
 
-        const balanceResult = await tx.leaveBalance.updateMany({
-          where: {
-            id: balance.id,
-
-            /*
-             * Pastikan konfigurasi saldo
-             * tidak berubah sejak dibaca.
-             */
-            entitlement: balance.entitlement,
-
-            carriedOver: balance.carriedOver,
-
-            adjusted: balance.adjusted,
-
-            /*
-             * Ini bagian penting untuk
-             * concurrency.
-             */
-            used: {
-              lte: maximumUsed,
-            },
-          },
-
-          data: {
-            used: {
-              increment: usage.days,
-            },
-          },
-        });
-
-        if (balanceResult.count !== 1) {
-          const latest = await tx.leaveBalance.findUnique({
+        if (isApprove && existing.type === "ANNUAL_LEAVE") {
+          const latestLeave = await tx.leaveRequest.findUnique({
             where: {
-              id: balance.id,
+              id: existing.id,
             },
 
             select: {
+              approvedDocumentId: true,
+            },
+          });
+
+          if (!latestLeave?.approvedDocumentId) {
+            throw new Error("FINAL_DOCUMENT_REQUIRED");
+          }
+        }
+        /*
+         * =========================
+         * CEK ATTENDANCE
+         * =========================
+         *
+         * Approval hanya dicek saat
+         * APPROVE.
+         *
+         * REJECT tetap boleh dilakukan.
+         */
+        if (isApprove) {
+          const attendanceConflict = await tx.attendanceDay.findFirst({
+            where: {
+              employeeId: existing.employeeId,
+
+              attendanceDate: {
+                gte: existing.startDate,
+
+                lte: existing.endDate,
+              },
+
+              /*
+               * AttendanceDay kosong
+               * tidak dianggap hadir.
+               */
+              checkInAt: {
+                not: null,
+              },
+            },
+
+            select: {
+              attendanceDate: true,
+
+              attendanceMode: true,
+
+              checkInAt: true,
+            },
+
+            orderBy: {
+              attendanceDate: "asc",
+            },
+          });
+
+          if (attendanceConflict) {
+            const conflictDate = attendanceConflict.attendanceDate
+              .toISOString()
+              .slice(0, 10);
+
+            throw new Error(`ATTENDANCE_CONFLICT:${conflictDate}`);
+          }
+        }
+
+        /*
+         * Cek semua saldo SEBELUM
+         * mengubah LeaveRequest.
+         */
+        for (const usage of leaveUsage) {
+          const balance = await tx.leaveBalance.findUnique({
+            where: {
+              employeeId_year: {
+                employeeId: existing.employeeId,
+
+                year: usage.year,
+              },
+            },
+          });
+
+          if (!balance) {
+            throw new Error(`BALANCE_MISSING:${usage.year}`);
+          }
+
+          const available =
+            balance.entitlement +
+            balance.carriedOver +
+            balance.adjusted -
+            balance.used;
+
+          if (available < usage.days) {
+            throw new Error(
+              `BALANCE_INSUFFICIENT:${usage.year}:${available}:${usage.days}`,
+            );
+          }
+        }
+
+        /*
+         * Update hanya jika masih
+         * PENDING.
+         *
+         * Melindungi dari double
+         * click / dua admin.
+         */
+        const updateResult = await tx.leaveRequest.updateMany({
+          where: {
+            id: existing.id,
+
+            status: "PENDING",
+          },
+
+          data: {
+            status: isApprove ? "APPROVED" : "REJECTED",
+
+            approvedAt: isApprove ? new Date() : null,
+
+            approvedBy: isApprove ? user.id : null,
+          },
+        });
+
+        if (updateResult.count !== 1) {
+          throw new Error("ALREADY_REVIEWED");
+        }
+
+        /*
+         * Kurangi saldo secara atomik.
+         *
+         * Kondisi `used <= maximumUsed`
+         * membuat dua approval bersamaan
+         * tidak bisa memakai saldo lama
+         * yang sama.
+         */
+        for (const usage of leaveUsage) {
+          const balance = await tx.leaveBalance.findUnique({
+            where: {
+              employeeId_year: {
+                employeeId: existing.employeeId,
+
+                year: usage.year,
+              },
+            },
+
+            select: {
+              id: true,
               entitlement: true,
               carriedOver: true,
               adjusted: true,
@@ -322,74 +328,148 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             },
           });
 
-          if (!latest) {
+          if (!balance) {
             throw new Error(`BALANCE_MISSING:${usage.year}`);
           }
 
-          const latestAvailable =
-            latest.entitlement +
-            latest.carriedOver +
-            latest.adjusted -
-            latest.used;
+          const totalAvailable =
+            balance.entitlement + balance.carriedOver + balance.adjusted;
 
-          if (latestAvailable < usage.days) {
+          const available = totalAvailable - balance.used;
+
+          if (available < usage.days) {
             throw new Error(
-              `BALANCE_INSUFFICIENT:${usage.year}:${latestAvailable}:${usage.days}`,
+              `BALANCE_INSUFFICIENT:${usage.year}:${available}:${usage.days}`,
             );
           }
 
           /*
-           * Saldo kemungkinan diubah admin
-           * saat approval berlangsung.
+           * Contoh:
+           *
+           * total hak = 12
+           * cuti yang akan dipakai = 3
+           *
+           * used sebelum approval
+           * maksimal harus 9.
            */
-          throw new Error(`BALANCE_CHANGED:${usage.year}`);
+          const maximumUsed = totalAvailable - usage.days;
+
+          const balanceResult = await tx.leaveBalance.updateMany({
+            where: {
+              id: balance.id,
+
+              /*
+               * Pastikan konfigurasi saldo
+               * tidak berubah sejak dibaca.
+               */
+              entitlement: balance.entitlement,
+
+              carriedOver: balance.carriedOver,
+
+              adjusted: balance.adjusted,
+
+              /*
+               * Ini bagian penting untuk
+               * concurrency.
+               */
+              used: {
+                lte: maximumUsed,
+              },
+            },
+
+            data: {
+              used: {
+                increment: usage.days,
+              },
+            },
+          });
+
+          if (balanceResult.count !== 1) {
+            const latest = await tx.leaveBalance.findUnique({
+              where: {
+                id: balance.id,
+              },
+
+              select: {
+                entitlement: true,
+                carriedOver: true,
+                adjusted: true,
+                used: true,
+              },
+            });
+
+            if (!latest) {
+              throw new Error(`BALANCE_MISSING:${usage.year}`);
+            }
+
+            const latestAvailable =
+              latest.entitlement +
+              latest.carriedOver +
+              latest.adjusted -
+              latest.used;
+
+            if (latestAvailable < usage.days) {
+              throw new Error(
+                `BALANCE_INSUFFICIENT:${usage.year}:${latestAvailable}:${usage.days}`,
+              );
+            }
+
+            /*
+             * Saldo kemungkinan diubah admin
+             * saat approval berlangsung.
+             */
+            throw new Error(`BALANCE_CHANGED:${usage.year}`);
+          }
         }
-      }
 
-      const leave = await tx.leaveRequest.findUniqueOrThrow({
-        where: {
-          id: existing.id,
-        },
-
-        select: {
-          id: true,
-          employeeId: true,
-          type: true,
-          startDate: true,
-          endDate: true,
-          reason: true,
-          status: true,
-          approvedAt: true,
-          approvedBy: true,
-        },
-      });
-
-      await tx.auditLog.create({
-        data: {
-          actorId: user.id,
-
-          action: isApprove ? "APPROVE" : "REJECT",
-
-          entityType: "LeaveRequest",
-
-          entityId: leave.id,
-
-          before: leaveForAudit(existing),
-
-          after: {
-            ...leaveForAudit(leave),
-
-            leaveBalanceUsage: leaveUsage,
+        const leave = await tx.leaveRequest.findUniqueOrThrow({
+          where: {
+            id: existing.id,
           },
 
-          ipAddress: request.headers.get("x-forwarded-for"),
+          select: {
+            id: true,
+            employeeId: true,
+            type: true,
+            startDate: true,
+            endDate: true,
+            reason: true,
+            status: true,
+            approvedAt: true,
+            approvedBy: true,
+          },
+        });
 
-          userAgent: request.headers.get("user-agent"),
-        },
-      });
+        await tx.auditLog.create({
+          data: {
+            actorId: user.id,
 
-      return leave;
-    });
+            action: isApprove ? "APPROVE" : "REJECT",
+
+            entityType: "LeaveRequest",
+
+            entityId: leave.id,
+
+            before: leaveForAudit(existing),
+
+            after: {
+              ...leaveForAudit(leave),
+
+              leaveBalanceUsage: leaveUsage,
+            },
+
+            ipAddress: request.headers.get("x-forwarded-for"),
+
+            userAgent: request.headers.get("user-agent"),
+          },
+        });
+
+        return leave;
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      },
+    );
 
     return NextResponse.json({
       ok: true,
@@ -404,6 +484,31 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     console.error(error);
 
     if (error instanceof Error) {
+      if (error.message === "FINAL_DOCUMENT_REQUIRED") {
+        return NextResponse.json(
+          {
+            error:
+              "Cuti belum dapat disetujui. Upload dokumen final yang sudah ditandatangani terlebih dahulu.",
+          },
+          {
+            status: 409,
+          },
+        );
+      }
+
+      if (error.message.startsWith("ATTENDANCE_CONFLICT:")) {
+        const date = error.message.split(":")[1];
+
+        return NextResponse.json(
+          {
+            error: `Pengajuan tidak dapat disetujui karena karyawan sudah tercatat hadir pada ${date}.`,
+          },
+          {
+            status: 409,
+          },
+        );
+      }
+
       if (error.message === "ALREADY_REVIEWED") {
         return NextResponse.json(
           {
@@ -453,6 +558,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           },
         );
       }
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Data absensi atau pengajuan berubah bersamaan. Silakan coba proses kembali.",
+        },
+        {
+          status: 409,
+        },
+      );
     }
 
     return NextResponse.json(
