@@ -254,9 +254,17 @@ async function addPhotoToExcel(
 
   const storageRoot = path.isAbsolute(configuredRoot)
     ? configuredRoot
-    : path.resolve(process.cwd(), configuredRoot);
+    : path.resolve(
+        /*turbopackIgnore: true*/
+        process.cwd(),
+        configuredRoot,
+      );
 
-  const absolutePath = path.resolve(storageRoot, photo.storagePath);
+  const absolutePath = path.resolve(
+    /*turbopackIgnore: true*/
+    storageRoot,
+    photo.storagePath,
+  );
 
   const relative = path.relative(storageRoot, absolutePath);
 
@@ -272,8 +280,15 @@ async function addPhotoToExcel(
   try {
     const buffer = await readFile(absolutePath);
 
+    /*
+     * Pakai base64 agar tidak bentrok
+     * antara typing Buffer ExcelJS
+     * dan @types/node v24.
+     */
+    const base64 = `data:${photo.mimeType};base64,${buffer.toString("base64")}`;
+
     const imageId = workbook.addImage({
-      buffer,
+      base64,
       extension,
     });
 
@@ -1287,8 +1302,12 @@ export async function GET(request: NextRequest) {
     {
       includeEmpty: true,
     },
-    (cell) => {
-      if (cell.column === 10) {
+    (cell, columnNumber) => {
+      /*
+       * Kolom J adalah spacer
+       * antara dua ranking.
+       */
+      if (columnNumber === 10) {
         return;
       }
 

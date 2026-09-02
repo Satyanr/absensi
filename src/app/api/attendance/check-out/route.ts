@@ -226,7 +226,11 @@ export async function POST(request: NextRequest) {
 
   const storageRoot = path.isAbsolute(configuredRoot)
     ? configuredRoot
-    : path.resolve(process.cwd(), configuredRoot);
+    : path.resolve(
+        /*turbopackIgnore: true*/
+        process.cwd(),
+        configuredRoot,
+      );
 
   const directoryPath = path.join(storageRoot, relativeDirectory);
 
