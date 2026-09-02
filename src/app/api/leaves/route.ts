@@ -12,6 +12,8 @@ import {
   saveLeaveAttachment,
 } from "@/lib/storage/leave-attachment";
 
+import { Prisma } from "@/generated/prisma/client";
+
 export async function POST(request: NextRequest) {
   let form: FormData;
 
@@ -184,45 +186,6 @@ export async function POST(request: NextRequest) {
   const endDate = new Date(`${parsed.data.endDate}T00:00:00.000Z`);
 
   /*
-   * =========================
-   * CEK OVERLAP
-   * =========================
-   */
-
-  const overlapping = await prisma.leaveRequest.findFirst({
-    where: {
-      employeeId: employee.id,
-
-      status: {
-        in: ["PENDING", "APPROVED"],
-      },
-
-      startDate: {
-        lte: endDate,
-      },
-
-      endDate: {
-        gte: startDate,
-      },
-    },
-
-    select: {
-      id: true,
-    },
-  });
-
-  if (overlapping) {
-    return NextResponse.json(
-      {
-        error: "Sudah ada pengajuan pada rentang tanggal tersebut.",
-      },
-      {
-        status: 409,
-      },
-    );
-  }
-
-  /*
    * File disimpan setelah semua
    * validasi awal lolos.
    */
@@ -234,23 +197,28 @@ export async function POST(request: NextRequest) {
       storedAttachment = await saveLeaveAttachment(attachment);
     }
 
-    const leaveRequest = await prisma.$transaction(async (tx) => {
-      let attachmentId: string | null = null;
+    const leaveRequest = await prisma.$transaction(
+      async (tx) => {
+        /*
+         * =========================
+         * CEK OVERLAP ATOMIC
+         * =========================
+         */
+        const overlapping = await tx.leaveRequest.findFirst({
+          where: {
+            employeeId: employee.id,
 
-      if (storedAttachment) {
-        const createdAttachment = await tx.attachment.create({
-          data: {
-            storageDisk: "local",
+            status: {
+              in: ["PENDING", "APPROVED"],
+            },
 
-            storagePath: storedAttachment.storagePath,
+            startDate: {
+              lte: endDate,
+            },
 
-            originalFilename: storedAttachment.originalFilename,
-
-            mimeType: storedAttachment.mimeType,
-
-            fileSize: storedAttachment.fileSize,
-
-            checksum: storedAttachment.checksum,
+            endDate: {
+              gte: startDate,
+            },
           },
 
           select: {
@@ -258,91 +226,122 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        attachmentId = createdAttachment.id;
-      }
+        if (overlapping) {
+          throw new Error("LEAVE_OVERLAP");
+        }
 
-      const created = await tx.leaveRequest.create({
-        data: {
-          employeeId: employee.id,
+        let attachmentId: string | null = null;
 
-          type: parsed.data.type,
+        if (storedAttachment) {
+          const createdAttachment = await tx.attachment.create({
+            data: {
+              storageDisk: "local",
 
-          startDate,
-          endDate,
+              storagePath: storedAttachment.storagePath,
 
-          reason: parsed.data.reason,
+              originalFilename: storedAttachment.originalFilename,
 
-          attachmentId,
+              mimeType: storedAttachment.mimeType,
 
-          /*
-           * Public submission
-           * SELALU PENDING.
-           */
-          status: "PENDING",
-        },
+              fileSize: storedAttachment.fileSize,
 
-        select: {
-          id: true,
-          type: true,
-          startDate: true,
-          endDate: true,
-          reason: true,
-          status: true,
-          attachmentId: true,
-          submittedAt: true,
-        },
-      });
+              checksum: storedAttachment.checksum,
+            },
 
-      await tx.auditLog.create({
-        data: {
-          actorId: null,
+            select: {
+              id: true,
+            },
+          });
 
-          action: "CREATE",
+          attachmentId = createdAttachment.id;
+        }
 
-          entityType: "LeaveRequest",
-
-          entityId: created.id,
-
-          after: {
-            source: "PUBLIC_EMPLOYEE",
-
+        const created = await tx.leaveRequest.create({
+          data: {
             employeeId: employee.id,
 
-            employeeCode: employee.employeeCode,
+            type: parsed.data.type,
 
-            employeeName: employee.name,
+            startDate,
+            endDate,
 
-            type: created.type,
+            reason: parsed.data.reason,
 
-            startDate: created.startDate.toISOString().slice(0, 10),
+            attachmentId,
 
-            endDate: created.endDate.toISOString().slice(0, 10),
-
-            reason: created.reason,
-
-            status: created.status,
-
-            attachmentId: created.attachmentId,
-
-            attachment: storedAttachment
-              ? {
-                  originalFilename: storedAttachment.originalFilename,
-
-                  mimeType: storedAttachment.mimeType,
-
-                  fileSize: Number(storedAttachment.fileSize),
-                }
-              : null,
+            /*
+             * Public submission
+             * SELALU PENDING.
+             */
+            status: "PENDING",
           },
 
-          ipAddress: request.headers.get("x-forwarded-for"),
+          select: {
+            id: true,
+            type: true,
+            startDate: true,
+            endDate: true,
+            reason: true,
+            status: true,
+            attachmentId: true,
+            submittedAt: true,
+          },
+        });
 
-          userAgent: request.headers.get("user-agent"),
-        },
-      });
+        await tx.auditLog.create({
+          data: {
+            actorId: null,
 
-      return created;
-    });
+            action: "CREATE",
+
+            entityType: "LeaveRequest",
+
+            entityId: created.id,
+
+            after: {
+              source: "PUBLIC_EMPLOYEE",
+
+              employeeId: employee.id,
+
+              employeeCode: employee.employeeCode,
+
+              employeeName: employee.name,
+
+              type: created.type,
+
+              startDate: created.startDate.toISOString().slice(0, 10),
+
+              endDate: created.endDate.toISOString().slice(0, 10),
+
+              reason: created.reason,
+
+              status: created.status,
+
+              attachmentId: created.attachmentId,
+
+              attachment: storedAttachment
+                ? {
+                    originalFilename: storedAttachment.originalFilename,
+
+                    mimeType: storedAttachment.mimeType,
+
+                    fileSize: Number(storedAttachment.fileSize),
+                  }
+                : null,
+            },
+
+            ipAddress: request.headers.get("x-forwarded-for"),
+
+            userAgent: request.headers.get("user-agent"),
+          },
+        });
+
+        return created;
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      },
+    );
 
     return NextResponse.json(
       {
@@ -363,6 +362,32 @@ export async function POST(request: NextRequest) {
      */
     if (storedAttachment) {
       await removeLeaveAttachment(storedAttachment.absolutePath);
+    }
+
+    if (error instanceof Error && error.message === "LEAVE_OVERLAP") {
+      return NextResponse.json(
+        {
+          error: "Sudah ada pengajuan pada rentang tanggal tersebut.",
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Data pengajuan berubah bersamaan. Silakan coba kirim kembali.",
+        },
+        {
+          status: 409,
+        },
+      );
     }
 
     console.error(error);
