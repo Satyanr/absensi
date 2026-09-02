@@ -240,37 +240,40 @@ model Attachment {
   legacyFilename   String?  @unique @map("legacy_filename")
   createdAt        DateTime @default(now()) @map("created_at")
 
-  attendanceEvents      AttendanceEvent[]
-
-  leaveRequests         LeaveRequest[] @relation("LeaveAttachment")
-
+  attendanceEvents       AttendanceEvent[]
+  leaveRequests          LeaveRequest[] @relation("LeaveAttachment")
   approvedLeaveDocuments LeaveRequest[] @relation("LeaveApprovedDocument")
 
   @@map("attachments")
 }
 
 model LeaveRequest {
-  id               String             @id @default(cuid())
-  employeeId       String             @map("employee_id")
-  type             LeaveType
-  startDate        DateTime           @map("start_date") @db.Date
-  endDate          DateTime           @map("end_date") @db.Date
-  reason           String
-  status           LeaveRequestStatus @default(PENDING)
-  attachmentId     String?            @map("attachment_id")
-  approvedDocumentId String? @map("approved_document_id")
-  submittedAt      DateTime           @default(now()) @map("submitted_at")
-  approvedAt       DateTime?          @map("approved_at")
-  approvedBy       String?            @map("approved_by")
-  legacyApprovalId BigInt?            @unique @map("legacy_approval_id")
-  createdAt        DateTime           @default(now()) @map("created_at")
-  updatedAt        DateTime           @updatedAt @map("updated_at")
+  id                 String             @id @default(cuid())
+  employeeId         String             @map("employee_id")
+  type               LeaveType
+  startDate          DateTime           @map("start_date") @db.Date
+  endDate            DateTime           @map("end_date") @db.Date
+  reason             String
+  status             LeaveRequestStatus @default(PENDING)
+  attachmentId       String?            @map("attachment_id")
+  approvedDocumentId String?            @map("approved_document_id")
+  submittedAt        DateTime           @default(now()) @map("submitted_at")
+  approvedAt         DateTime?          @map("approved_at")
+  approvedBy         String?            @map("approved_by")
+  legacyApprovalId   BigInt?            @unique @map("legacy_approval_id")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
 
-  employee Employee @relation(
-  fields: [employeeId],
-  references: [id],
-  onDelete: Restrict
-)
+  employee         Employee    @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  attachment       Attachment? @relation("LeaveAttachment", fields: [attachmentId], references: [id], onDelete: SetNull)
+  approvedDocument Attachment? @relation("LeaveApprovedDocument", fields: [approvedDocumentId], references: [id], onDelete: SetNull)
+  approver         User?       @relation("LeaveApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+
+  @@index([approvedDocumentId])
+  @@index([employeeId, startDate, endDate])
+  @@index([status])
+  @@map("leave_requests")
+}
 
 attachment Attachment? @relation(
   "LeaveAttachment",
