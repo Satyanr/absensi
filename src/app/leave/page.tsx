@@ -18,7 +18,7 @@ export default function PublicLeavePage() {
 
   const initialEmployeeCode = searchParams.get("employeeCode");
 
-  const [employeeCode, setEmployeeCode] = useState("");
+  const [employeeCode, setEmployeeCode] = useState(initialEmployeeCode ?? "");
 
   const [employee, setEmployee] = useState<Employee | null>(null);
 
@@ -77,6 +77,16 @@ export default function PublicLeavePage() {
       setLookupLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!initialEmployeeCode) {
+      return;
+    }
+
+    void lookupEmployee(initialEmployeeCode);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialEmployeeCode]);
 
   async function searchEmployee(event: FormEvent) {
     event.preventDefault();

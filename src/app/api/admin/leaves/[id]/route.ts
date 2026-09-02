@@ -5,10 +5,19 @@ import {
 
 import { z } from "zod";
 
-import { getCurrentUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/prisma";
+import {
+  getCurrentUser,
+} from "@/lib/auth/session";
 
-const reviewLeaveRequestSchema = z.object({
+import {
+  prisma,
+} from "@/lib/prisma";
+
+import {
+  countLeaveDaysByYear,
+} from "@/lib/leave/balance";
+
+const reviewSchema = z.object({
   action: z.enum([
     "APPROVE",
     "REJECT",
@@ -21,48 +30,59 @@ type RouteContext = {
   }>;
 };
 
-type LeaveForAudit = {
-  employeeId: string;
-  type:
-    | "PERMISSION"
-    | "SICK"
-    | "ANNUAL_LEAVE";
-  startDate: Date;
-  endDate: Date;
-  reason: string;
-  status:
-    | "PENDING"
-    | "APPROVED"
-    | "REJECTED"
-    | "CANCELLED";
-  approvedAt: Date | null;
-  approvedBy: string | null;
-};
+function leaveForAudit(
+  leave: {
+    employeeId: string;
 
-function leaveRequestForAudit(
-  leaveRequest: LeaveForAudit
+    type:
+      | "PERMISSION"
+      | "SICK"
+      | "ANNUAL_LEAVE";
+
+    startDate: Date;
+    endDate: Date;
+    reason: string;
+
+    status:
+      | "PENDING"
+      | "APPROVED"
+      | "REJECTED"
+      | "CANCELLED";
+
+    approvedAt: Date | null;
+    approvedBy: string | null;
+  }
 ) {
   return {
-    employeeId: leaveRequest.employeeId,
-    type: leaveRequest.type,
+    employeeId:
+      leave.employeeId,
 
-    startDate: leaveRequest.startDate
-      .toISOString()
-      .slice(0, 10),
+    type:
+      leave.type,
 
-    endDate: leaveRequest.endDate
-      .toISOString()
-      .slice(0, 10),
+    startDate:
+      leave.startDate
+        .toISOString()
+        .slice(0, 10),
 
-    reason: leaveRequest.reason,
-    status: leaveRequest.status,
+    endDate:
+      leave.endDate
+        .toISOString()
+        .slice(0, 10),
+
+    reason:
+      leave.reason,
+
+    status:
+      leave.status,
 
     approvedAt:
-      leaveRequest.approvedAt?.toISOString() ??
+      leave.approvedAt
+        ?.toISOString() ??
       null,
 
     approvedBy:
-      leaveRequest.approvedBy,
+      leave.approvedBy,
   };
 }
 
@@ -70,7 +90,8 @@ export async function PATCH(
   request: NextRequest,
   context: RouteContext
 ) {
-  const user = await getCurrentUser();
+  const user =
+    await getCurrentUser();
 
   if (!user) {
     return NextResponse.json(
@@ -83,10 +104,13 @@ export async function PATCH(
     );
   }
 
-  if (user.role === "EMPLOYEE") {
+  if (
+    user.role === "EMPLOYEE"
+  ) {
     return NextResponse.json(
       {
-        error: "Tidak memiliki akses.",
+        error:
+          "Tidak memiliki akses.",
       },
       {
         status: 403,
@@ -94,16 +118,19 @@ export async function PATCH(
     );
   }
 
-  const { id } = await context.params;
+  const { id } =
+    await context.params;
 
   let body: unknown;
 
   try {
-    body = await request.json();
+    body =
+      await request.json();
   } catch {
     return NextResponse.json(
       {
-        error: "Request tidak valid.",
+        error:
+          "Request tidak valid.",
       },
       {
         status: 400,
@@ -112,12 +139,13 @@ export async function PATCH(
   }
 
   const parsed =
-    reviewLeaveRequestSchema.safeParse(body);
+    reviewSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
       {
-        error: "Aksi pengajuan tidak valid.",
+        error:
+          "Aksi tidak valid.",
       },
       {
         status: 400,
@@ -141,13 +169,21 @@ export async function PATCH(
         status: true,
         approvedAt: true,
         approvedBy: true,
+
+        employee: {
+          select: {
+            employeeCode: true,
+            name: true,
+          },
+        },
       },
     });
 
   if (!existing) {
     return NextResponse.json(
       {
-        error: "Pengajuan tidak ditemukan.",
+        error:
+          "Pengajuan tidak ditemukan.",
       },
       {
         status: 404,
@@ -155,7 +191,10 @@ export async function PATCH(
     );
   }
 
-  if (existing.status !== "PENDING") {
+  if (
+    existing.status !==
+    "PENDING"
+  ) {
     return NextResponse.json(
       {
         error:
@@ -168,47 +207,147 @@ export async function PATCH(
   }
 
   const isApprove =
-    parsed.data.action === "APPROVE";
+    parsed.data.action ===
+    "APPROVE";
 
-  const reviewedAt = new Date();
+  /*
+   * Hanya cuti yang
+   * menggunakan saldo.
+   */
+  const leaveUsage =
+    isApprove &&
+    existing.type ===
+      "ANNUAL_LEAVE"
+      ? countLeaveDaysByYear(
+          existing.startDate,
+          existing.endDate
+        )
+      : [];
 
   try {
     const updated =
       await prisma.$transaction(
         async (tx) => {
-          const result =
+          /*
+           * Cek semua saldo SEBELUM
+           * mengubah LeaveRequest.
+           */
+          for (
+            const usage of
+            leaveUsage
+          ) {
+            const balance =
+              await tx.leaveBalance.findUnique({
+                where: {
+                  employeeId_year: {
+                    employeeId:
+                      existing.employeeId,
+
+                    year:
+                      usage.year,
+                  },
+                },
+              });
+
+            if (!balance) {
+              throw new Error(
+                `BALANCE_MISSING:${usage.year}`
+              );
+            }
+
+            const available =
+              balance.entitlement +
+              balance.carriedOver +
+              balance.adjusted -
+              balance.used;
+
+            if (
+              available <
+              usage.days
+            ) {
+              throw new Error(
+                `BALANCE_INSUFFICIENT:${usage.year}:${available}:${usage.days}`
+              );
+            }
+          }
+
+          /*
+           * Update hanya jika masih
+           * PENDING.
+           *
+           * Melindungi dari double
+           * click / dua admin.
+           */
+          const updateResult =
             await tx.leaveRequest.updateMany({
               where: {
-                id,
-                status: "PENDING",
+                id:
+                  existing.id,
+
+                status:
+                  "PENDING",
               },
 
               data: {
-                status: isApprove
-                  ? "APPROVED"
-                  : "REJECTED",
+                status:
+                  isApprove
+                    ? "APPROVED"
+                    : "REJECTED",
 
-                approvedAt: isApprove
-                  ? reviewedAt
-                  : null,
+                approvedAt:
+                  isApprove
+                    ? new Date()
+                    : null,
 
-                approvedBy: isApprove
-                  ? user.id
-                  : null,
+                approvedBy:
+                  isApprove
+                    ? user.id
+                    : null,
               },
             });
 
-          // Proteksi double click / dua admin.
-          if (result.count !== 1) {
+          if (
+            updateResult.count !==
+            1
+          ) {
             throw new Error(
-              "LEAVE_ALREADY_REVIEWED"
+              "ALREADY_REVIEWED"
             );
           }
 
-          const leaveRequest =
+          /*
+           * Baru kurangi saldo
+           * setelah approval berhasil.
+           */
+          for (
+            const usage of
+            leaveUsage
+          ) {
+            await tx.leaveBalance.update({
+              where: {
+                employeeId_year: {
+                  employeeId:
+                    existing.employeeId,
+
+                  year:
+                    usage.year,
+                },
+              },
+
+              data: {
+                used: {
+                  increment:
+                    usage.days,
+                },
+              },
+            });
+          }
+
+          const leave =
             await tx.leaveRequest.findUniqueOrThrow({
               where: {
-                id,
+                id:
+                  existing.id,
               },
 
               select: {
@@ -226,26 +365,33 @@ export async function PATCH(
 
           await tx.auditLog.create({
             data: {
-              actorId: user.id,
+              actorId:
+                user.id,
 
               action:
-                parsed.data.action,
+                isApprove
+                  ? "APPROVE"
+                  : "REJECT",
 
               entityType:
                 "LeaveRequest",
 
               entityId:
-                leaveRequest.id,
+                leave.id,
 
               before:
-                leaveRequestForAudit(
+                leaveForAudit(
                   existing
                 ),
 
-              after:
-                leaveRequestForAudit(
-                  leaveRequest
+              after: {
+                ...leaveForAudit(
+                  leave
                 ),
+
+                leaveBalanceUsage:
+                  leaveUsage,
+              },
 
               ipAddress:
                 request.headers.get(
@@ -259,43 +405,94 @@ export async function PATCH(
             },
           });
 
-          return leaveRequest;
+          return leave;
         }
       );
 
     return NextResponse.json({
       ok: true,
 
-      message: isApprove
-        ? "Pengajuan berhasil disetujui."
-        : "Pengajuan berhasil ditolak.",
+      message:
+        isApprove
+          ? "Pengajuan berhasil disetujui."
+          : "Pengajuan berhasil ditolak.",
 
-      leaveRequest: updated,
+      leaveRequest:
+        updated,
     });
   } catch (error) {
     console.error(error);
 
     if (
-      error instanceof Error &&
-      error.message ===
-        "LEAVE_ALREADY_REVIEWED"
+      error instanceof Error
     ) {
-      return NextResponse.json(
-        {
-          error:
-            "Pengajuan ini sudah diproses oleh admin lain.",
-        },
-        {
-          status: 409,
-        }
-      );
+      if (
+        error.message ===
+        "ALREADY_REVIEWED"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Pengajuan sudah diproses oleh admin lain.",
+          },
+          {
+            status: 409,
+          }
+        );
+      }
+
+      if (
+        error.message.startsWith(
+          "BALANCE_MISSING:"
+        )
+      ) {
+        const year =
+          error.message.split(
+            ":"
+          )[1];
+
+        return NextResponse.json(
+          {
+            error:
+              `Saldo cuti tahun ${year} belum diatur untuk karyawan ini.`,
+          },
+          {
+            status: 409,
+          }
+        );
+      }
+
+      if (
+        error.message.startsWith(
+          "BALANCE_INSUFFICIENT:"
+        )
+      ) {
+        const [
+          ,
+          year,
+          available,
+          needed,
+        ] =
+          error.message.split(
+            ":"
+          );
+
+        return NextResponse.json(
+          {
+            error:
+              `Saldo cuti tahun ${year} tidak cukup. Sisa ${available} hari, pengajuan membutuhkan ${needed} hari.`,
+          },
+          {
+            status: 409,
+          }
+        );
+      }
     }
 
     return NextResponse.json(
       {
-        error: isApprove
-          ? "Gagal menyetujui pengajuan."
-          : "Gagal menolak pengajuan.",
+        error:
+          "Gagal memproses pengajuan.",
       },
       {
         status: 500,

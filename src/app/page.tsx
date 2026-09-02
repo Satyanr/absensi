@@ -483,17 +483,6 @@ export default function HomePage() {
                 </button>
               )}
 
-              {!attendanceStarted && (
-                <button
-                  type="button"
-                  onClick={startAttendance}
-                  disabled={attendanceLoading}
-                  className="mt-4 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50"
-                >
-                  {attendanceLoading ? "Memuat..." : "Lanjut Absensi"}
-                </button>
-              )}
-
               <Link
                 href={`/leave?employeeCode=${encodeURIComponent(
                   employee.employeeCode,
@@ -502,14 +491,6 @@ export default function HomePage() {
               >
                 Ajukan Izin / Sakit / Cuti
               </Link>
-
-              <button
-                type="button"
-                onClick={resetEmployee}
-                className="mt-3 w-full text-sm font-medium text-neutral-500"
-              >
-                Ganti Karyawan
-              </button>
 
               <button
                 type="button"
