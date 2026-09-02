@@ -6,6 +6,7 @@ import LeaveCreateForm from "@/components/admin/LeaveCreateForm";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import LeaveReviewActions from "@/components/admin/LeaveReviewActions";
+import LeaveBalanceForm from "@/components/admin/LeaveBalanceForm";
 
 function formatDate(value: Date) {
   return new Intl.DateTimeFormat("id-ID", {
@@ -126,8 +127,10 @@ export default async function LeavesPage() {
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[380px_1fr]">
-          <div>
+          <div className="space-y-6">
             <LeaveCreateForm employees={employees} />
+
+            <LeaveBalanceForm employees={employees} />
           </div>
 
           <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
@@ -186,7 +189,7 @@ export default async function LeavesPage() {
 
                       <p className="mt-1 text-sm">{item.reason}</p>
                     </div>
-                    
+
                     {item.status === "PENDING" && (
                       <LeaveReviewActions leaveRequestId={item.id} />
                     )}
