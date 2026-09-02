@@ -249,6 +249,24 @@ export default async function ReportsPage({ searchParams }: Props) {
 
           notes: true,
 
+          events: {
+            where: {
+              photoId: {
+                not: null,
+              },
+            },
+
+            select: {
+              id: true,
+              eventType: true,
+              photoId: true,
+            },
+
+            orderBy: {
+              serverReceivedAt: "asc",
+            },
+          },
+
           employee: {
             select: {
               id: true,
@@ -369,6 +387,16 @@ export default async function ReportsPage({ searchParams }: Props) {
 
     notes: item.notes,
 
+    checkInPhotoEventId:
+      item.events.find(
+        (event) => event.eventType === "CHECK_IN" && event.photoId,
+      )?.id ?? null,
+
+    checkOutPhotoEventId:
+      item.events.find(
+        (event) => event.eventType === "CHECK_OUT" && event.photoId,
+      )?.id ?? null,
+
     employee: item.employee,
   }));
 
@@ -452,6 +480,7 @@ export default async function ReportsPage({ searchParams }: Props) {
   }
 
   const exportUrl = `/api/admin/reports/export?${exportParams.toString()}`;
+  const excelExportUrl = `/api/admin/reports/export-xlsx?${exportParams.toString()}`;
 
   const selectedEmployee =
     selectedEmployeeId === "ALL"
@@ -617,12 +646,21 @@ export default async function ReportsPage({ searchParams }: Props) {
                 </div>
               </div>
 
-              <a
-                href={exportUrl}
-                className="mt-5 inline-flex w-full justify-center rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white sm:w-auto"
-              >
-                Tarik Data CSV
-              </a>
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                <a
+                  href={excelExportUrl}
+                  className="inline-flex w-full justify-center rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white sm:w-auto"
+                >
+                  Export Excel Lengkap
+                </a>
+
+                <a
+                  href={exportUrl}
+                  className="inline-flex w-full justify-center rounded-xl border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-700 sm:w-auto"
+                >
+                  CSV Ringkas
+                </a>
+              </div>
             </section>
 
             {/* SUMMARY */}
@@ -735,6 +773,45 @@ export default async function ReportsPage({ searchParams }: Props) {
                           )}
                         </div>
 
+                        {item.source === "ATTENDANCE" && (
+                          <div className="mt-4">
+                            <p className="text-xs text-neutral-500">
+                              Selfie Absensi
+                            </p>
+
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {item.checkInPhotoEventId && (
+                                <a
+                                  href={`/api/admin/attendance-events/${item.checkInPhotoEventId}/photo`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="rounded-lg border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-600"
+                                >
+                                  Foto Masuk
+                                </a>
+                              )}
+
+                              {item.checkOutPhotoEventId && (
+                                <a
+                                  href={`/api/admin/attendance-events/${item.checkOutPhotoEventId}/photo`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="rounded-lg border border-neutral-400 px-3 py-2 text-sm font-semibold"
+                                >
+                                  Foto Pulang
+                                </a>
+                              )}
+
+                              {!item.checkInPhotoEventId &&
+                                !item.checkOutPhotoEventId && (
+                                  <span className="text-sm text-neutral-400">
+                                    Tidak ada foto
+                                  </span>
+                                )}
+                            </div>
+                          </div>
+                        )}
+
                         <div className="mt-4">
                           <p className="text-xs text-neutral-500">Keterangan</p>
 
@@ -766,6 +843,8 @@ export default async function ReportsPage({ searchParams }: Props) {
                           <th className="px-5 py-4">Pulang</th>
 
                           <th className="px-5 py-4">Status Pulang</th>
+
+                          <th className="px-5 py-4">Selfie</th>
 
                           <th className="px-5 py-4">Keterangan</th>
                         </tr>
@@ -826,6 +905,43 @@ export default async function ReportsPage({ searchParams }: Props) {
                                     item.checkOutStatus,
                                   )
                                 : "—"}
+                            </td>
+
+                            <td className="px-5 py-4">
+                              {item.source === "ATTENDANCE" ? (
+                                <div className="flex min-w-32 flex-col gap-2">
+                                  {item.checkInPhotoEventId && (
+                                    <a
+                                      href={`/api/admin/attendance-events/${item.checkInPhotoEventId}/photo`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm font-semibold text-blue-600 underline"
+                                    >
+                                      Foto Masuk
+                                    </a>
+                                  )}
+
+                                  {item.checkOutPhotoEventId && (
+                                    <a
+                                      href={`/api/admin/attendance-events/${item.checkOutPhotoEventId}/photo`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm font-semibold text-blue-600 underline"
+                                    >
+                                      Foto Pulang
+                                    </a>
+                                  )}
+
+                                  {!item.checkInPhotoEventId &&
+                                    !item.checkOutPhotoEventId && (
+                                      <span className="text-neutral-400">
+                                        —
+                                      </span>
+                                    )}
+                                </div>
+                              ) : (
+                                "—"
+                              )}
                             </td>
 
                             <td className="px-5 py-4 text-neutral-600">
