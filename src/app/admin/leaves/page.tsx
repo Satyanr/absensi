@@ -116,6 +116,15 @@ export default async function LeavesPage() {
             fileSize: true,
           },
         },
+
+        approvedDocument: {
+          select: {
+            id: true,
+            originalFilename: true,
+            mimeType: true,
+            fileSize: true,
+          },
+        },
       },
 
       orderBy: {
@@ -248,8 +257,44 @@ export default async function LeavesPage() {
                       </div>
                     )}
 
+                    {item.type === "ANNUAL_LEAVE" && item.approvedDocument && (
+                      <div className="mt-3 rounded-xl border border-green-200 bg-green-50 p-3">
+                        <p className="text-xs font-medium text-green-700">
+                          Dokumen Final Cuti
+                        </p>
+
+                        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-green-950">
+                              {item.approvedDocument.originalFilename ??
+                                "Dokumen Final"}
+                            </p>
+
+                            <p className="text-xs text-green-700">
+                              {item.approvedDocument.mimeType}
+                              {" • "}
+                              {formatFileSize(item.approvedDocument.fileSize)}
+                            </p>
+                          </div>
+
+                          <a
+                            href={`/api/admin/leaves/${item.id}/approved-document`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex shrink-0 justify-center rounded-lg border border-green-700 px-3 py-2 text-sm font-semibold text-green-700"
+                          >
+                            Download Final
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
                     {item.status === "PENDING" && (
-                      <LeaveReviewActions leaveRequestId={item.id} />
+                      <LeaveReviewActions
+                        leaveRequestId={item.id}
+                        leaveType={item.type}
+                        hasApprovedDocument={Boolean(item.approvedDocument)}
+                      />
                     )}
                   </div>
                 ))}
