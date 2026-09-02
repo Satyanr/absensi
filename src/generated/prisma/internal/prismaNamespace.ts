@@ -1366,6 +1366,7 @@ export const AttendanceDayScalarFieldEnum = {
   id: 'id',
   employeeId: 'employeeId',
   attendanceDate: 'attendanceDate',
+  attendanceMode: 'attendanceMode',
   checkInAt: 'checkInAt',
   checkOutAt: 'checkOutAt',
   checkInStatus: 'checkInStatus',
@@ -1386,6 +1387,7 @@ export const AttendanceEventScalarFieldEnum = {
   id: 'id',
   attendanceDayId: 'attendanceDayId',
   employeeId: 'employeeId',
+  attendanceMode: 'attendanceMode',
   eventType: 'eventType',
   clientCapturedAt: 'clientCapturedAt',
   serverReceivedAt: 'serverReceivedAt',
@@ -1608,6 +1610,20 @@ export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'In
  * Reference to a field of type 'Int[]'
  */
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
+ * Reference to a field of type 'AttendanceMode'
+ */
+export type EnumAttendanceModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AttendanceMode'>
+    
+
+
+/**
+ * Reference to a field of type 'AttendanceMode[]'
+ */
+export type ListEnumAttendanceModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AttendanceMode[]'>
     
 
 

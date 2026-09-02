@@ -74,18 +74,23 @@ enum AuditAction {
   RESTORE
 }
 
+enum AttendanceMode {
+  OFFICE
+  PROJECT
+}
+
 model Employee {
-  id             String   @id @default(cuid())
-  employeeCode   String   @unique @map("employee_code")
-  name           String
-  email          String?  @unique
-  phone          String?
-  joinDate       DateTime? @db.Date @map("join_date")
-  leaveEligible  Boolean  @default(true) @map("leave_eligible")
-  active         Boolean  @default(true)
-  legacyId       BigInt?  @unique @map("legacy_id")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id            String    @id @default(cuid())
+  employeeCode  String    @unique @map("employee_code")
+  name          String
+  email         String?   @unique
+  phone         String?
+  joinDate      DateTime? @map("join_date") @db.Date
+  leaveEligible Boolean   @default(true) @map("leave_eligible")
+  active        Boolean   @default(true)
+  legacyId      BigInt?   @unique @map("legacy_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   users            User[]
   attendanceDays   AttendanceDay[]
@@ -111,21 +116,21 @@ model User {
   employee       Employee?      @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   sessions       Session[]
   approvedLeaves LeaveRequest[] @relation("LeaveApprover")
-  auditLogs      AuditLog[]      @relation("AuditActor")
+  auditLogs      AuditLog[]     @relation("AuditActor")
 
   @@index([employeeId])
   @@map("users")
 }
 
 model Session {
-  id        String   @id @default(cuid())
-  tokenHash String   @unique @map("token_hash")
-  userId    String   @map("user_id")
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique @map("token_hash")
+  userId     String   @map("user_id")
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
   lastSeenAt DateTime @default(now()) @map("last_seen_at")
-  ipAddress String?  @map("ip_address")
-  userAgent String?  @map("user_agent")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -135,21 +140,21 @@ model Session {
 }
 
 model AttendancePolicy {
-  id               String   @id @default(cuid())
-  name             String
-  effectiveFrom    DateTime @db.Date @map("effective_from")
-  effectiveUntil   DateTime? @db.Date @map("effective_until")
-  workStart        String   @map("work_start")
-  lateAfter        String   @map("late_after")
-  workEnd          String   @map("work_end")
-  overtimeAfter    String   @map("overtime_after")
-  timezone         String   @default("Asia/Jakarta")
-  weekendIsOvertime Boolean @default(true) @map("weekend_is_overtime")
-  saturdayWorking  Boolean  @default(false) @map("saturday_working")
-  sundayWorking    Boolean  @default(false) @map("sunday_working")
-  active           Boolean  @default(true)
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                String    @id @default(cuid())
+  name              String
+  effectiveFrom     DateTime  @map("effective_from") @db.Date
+  effectiveUntil    DateTime? @map("effective_until") @db.Date
+  workStart         String    @map("work_start")
+  lateAfter         String    @map("late_after")
+  workEnd           String    @map("work_end")
+  overtimeAfter     String    @map("overtime_after")
+  timezone          String    @default("Asia/Jakarta")
+  weekendIsOvertime Boolean   @default(true) @map("weekend_is_overtime")
+  saturdayWorking   Boolean   @default(false) @map("saturday_working")
+  sundayWorking     Boolean   @default(false) @map("sunday_working")
+  active            Boolean   @default(true)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   @@index([effectiveFrom, effectiveUntil])
   @@map("attendance_policies")
@@ -171,7 +176,8 @@ model AttendanceLocation {
 model AttendanceDay {
   id                String              @id @default(cuid())
   employeeId        String              @map("employee_id")
-  attendanceDate    DateTime            @db.Date @map("attendance_date")
+  attendanceDate    DateTime            @map("attendance_date") @db.Date
+  attendanceMode    AttendanceMode      @default(OFFICE) @map("attendance_mode")
   checkInAt         DateTime?           @map("check_in_at")
   checkOutAt        DateTime?           @map("check_out_at")
   checkInStatus     CheckInStatus?      @map("check_in_status")
@@ -193,29 +199,31 @@ model AttendanceDay {
 }
 
 model AttendanceEvent {
-  id                String              @id @default(cuid())
-  attendanceDayId   String              @map("attendance_day_id")
-  employeeId        String              @map("employee_id")
-  eventType         AttendanceEventType @map("event_type")
-  clientCapturedAt  DateTime?           @map("client_captured_at")
-  serverReceivedAt  DateTime            @default(now()) @map("server_received_at")
-  latitude          Decimal?            @db.Decimal(10, 7)
-  longitude         Decimal?            @db.Decimal(10, 7)
-  locationAccuracy  Decimal?            @db.Decimal(10, 2) @map("location_accuracy")
-  locationCapturedAt DateTime?          @map("location_captured_at")
-  address           String?
-  photoId           String?             @map("photo_id")
-  source            AttendanceSource
-  deviceInfo        Json?               @map("device_info")
-  outsideGeofence   Boolean?            @map("outside_geofence")
-  distanceMeters    Decimal?            @db.Decimal(10, 2) @map("distance_meters")
-  legacyAbsensiId   BigInt?             @unique @map("legacy_absensi_id")
-  createdAt         DateTime            @default(now()) @map("created_at")
+  id                 String              @id @default(cuid())
+  attendanceDayId    String              @map("attendance_day_id")
+  employeeId         String              @map("employee_id")
+  attendanceMode     AttendanceMode      @default(OFFICE) @map("attendance_mode")
+  eventType          AttendanceEventType @map("event_type")
+  clientCapturedAt   DateTime?           @map("client_captured_at")
+  serverReceivedAt   DateTime            @default(now()) @map("server_received_at")
+  latitude           Decimal?            @db.Decimal(10, 7)
+  longitude          Decimal?            @db.Decimal(10, 7)
+  locationAccuracy   Decimal?            @map("location_accuracy") @db.Decimal(10, 2)
+  locationCapturedAt DateTime?           @map("location_captured_at")
+  address            String?
+  photoId            String?             @map("photo_id")
+  source             AttendanceSource
+  deviceInfo         Json?               @map("device_info")
+  outsideGeofence    Boolean?            @map("outside_geofence")
+  distanceMeters     Decimal?            @map("distance_meters") @db.Decimal(10, 2)
+  legacyAbsensiId    BigInt?             @unique @map("legacy_absensi_id")
+  createdAt          DateTime            @default(now()) @map("created_at")
 
   attendanceDay AttendanceDay @relation(fields: [attendanceDayId], references: [id], onDelete: Cascade)
   employee      Employee      @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   photo         Attachment?   @relation(fields: [photoId], references: [id], onDelete: SetNull)
 
+  @@unique([attendanceDayId, eventType])
   @@index([employeeId, serverReceivedAt])
   @@index([attendanceDayId, eventType])
   @@map("attendance_events")
@@ -242,8 +250,8 @@ model LeaveRequest {
   id               String             @id @default(cuid())
   employeeId       String             @map("employee_id")
   type             LeaveType
-  startDate        DateTime           @db.Date @map("start_date")
-  endDate          DateTime           @db.Date @map("end_date")
+  startDate        DateTime           @map("start_date") @db.Date
+  endDate          DateTime           @map("end_date") @db.Date
   reason           String
   status           LeaveRequestStatus @default(PENDING)
   attachmentId     String?            @map("attachment_id")

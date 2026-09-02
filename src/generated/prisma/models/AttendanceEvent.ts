@@ -46,6 +46,7 @@ export type AttendanceEventMinAggregateOutputType = {
   id: string | null
   attendanceDayId: string | null
   employeeId: string | null
+  attendanceMode: $Enums.AttendanceMode | null
   eventType: $Enums.AttendanceEventType | null
   clientCapturedAt: Date | null
   serverReceivedAt: Date | null
@@ -66,6 +67,7 @@ export type AttendanceEventMaxAggregateOutputType = {
   id: string | null
   attendanceDayId: string | null
   employeeId: string | null
+  attendanceMode: $Enums.AttendanceMode | null
   eventType: $Enums.AttendanceEventType | null
   clientCapturedAt: Date | null
   serverReceivedAt: Date | null
@@ -86,6 +88,7 @@ export type AttendanceEventCountAggregateOutputType = {
   id: number
   attendanceDayId: number
   employeeId: number
+  attendanceMode: number
   eventType: number
   clientCapturedAt: number
   serverReceivedAt: number
@@ -125,6 +128,7 @@ export type AttendanceEventMinAggregateInputType = {
   id?: true
   attendanceDayId?: true
   employeeId?: true
+  attendanceMode?: true
   eventType?: true
   clientCapturedAt?: true
   serverReceivedAt?: true
@@ -145,6 +149,7 @@ export type AttendanceEventMaxAggregateInputType = {
   id?: true
   attendanceDayId?: true
   employeeId?: true
+  attendanceMode?: true
   eventType?: true
   clientCapturedAt?: true
   serverReceivedAt?: true
@@ -165,6 +170,7 @@ export type AttendanceEventCountAggregateInputType = {
   id?: true
   attendanceDayId?: true
   employeeId?: true
+  attendanceMode?: true
   eventType?: true
   clientCapturedAt?: true
   serverReceivedAt?: true
@@ -273,6 +279,7 @@ export type AttendanceEventGroupByOutputType = {
   id: string
   attendanceDayId: string
   employeeId: string
+  attendanceMode: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt: Date | null
   serverReceivedAt: Date
@@ -317,6 +324,7 @@ export type AttendanceEventWhereInput = {
   id?: Prisma.StringFilter<"AttendanceEvent"> | string
   attendanceDayId?: Prisma.StringFilter<"AttendanceEvent"> | string
   employeeId?: Prisma.StringFilter<"AttendanceEvent"> | string
+  attendanceMode?: Prisma.EnumAttendanceModeFilter<"AttendanceEvent"> | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFilter<"AttendanceEvent"> | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.DateTimeNullableFilter<"AttendanceEvent"> | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFilter<"AttendanceEvent"> | Date | string
@@ -341,6 +349,7 @@ export type AttendanceEventOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   attendanceDayId?: Prisma.SortOrder
   employeeId?: Prisma.SortOrder
+  attendanceMode?: Prisma.SortOrder
   eventType?: Prisma.SortOrder
   clientCapturedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   serverReceivedAt?: Prisma.SortOrder
@@ -364,11 +373,13 @@ export type AttendanceEventOrderByWithRelationInput = {
 export type AttendanceEventWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   legacyAbsensiId?: bigint | number
+  attendanceDayId_eventType?: Prisma.AttendanceEventAttendanceDayIdEventTypeCompoundUniqueInput
   AND?: Prisma.AttendanceEventWhereInput | Prisma.AttendanceEventWhereInput[]
   OR?: Prisma.AttendanceEventWhereInput[]
   NOT?: Prisma.AttendanceEventWhereInput | Prisma.AttendanceEventWhereInput[]
   attendanceDayId?: Prisma.StringFilter<"AttendanceEvent"> | string
   employeeId?: Prisma.StringFilter<"AttendanceEvent"> | string
+  attendanceMode?: Prisma.EnumAttendanceModeFilter<"AttendanceEvent"> | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFilter<"AttendanceEvent"> | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.DateTimeNullableFilter<"AttendanceEvent"> | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFilter<"AttendanceEvent"> | Date | string
@@ -386,12 +397,13 @@ export type AttendanceEventWhereUniqueInput = Prisma.AtLeast<{
   attendanceDay?: Prisma.XOR<Prisma.AttendanceDayScalarRelationFilter, Prisma.AttendanceDayWhereInput>
   employee?: Prisma.XOR<Prisma.EmployeeScalarRelationFilter, Prisma.EmployeeWhereInput>
   photo?: Prisma.XOR<Prisma.AttachmentNullableScalarRelationFilter, Prisma.AttachmentWhereInput> | null
-}, "id" | "legacyAbsensiId">
+}, "id" | "legacyAbsensiId" | "attendanceDayId_eventType">
 
 export type AttendanceEventOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   attendanceDayId?: Prisma.SortOrder
   employeeId?: Prisma.SortOrder
+  attendanceMode?: Prisma.SortOrder
   eventType?: Prisma.SortOrder
   clientCapturedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   serverReceivedAt?: Prisma.SortOrder
@@ -421,6 +433,7 @@ export type AttendanceEventScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"AttendanceEvent"> | string
   attendanceDayId?: Prisma.StringWithAggregatesFilter<"AttendanceEvent"> | string
   employeeId?: Prisma.StringWithAggregatesFilter<"AttendanceEvent"> | string
+  attendanceMode?: Prisma.EnumAttendanceModeWithAggregatesFilter<"AttendanceEvent"> | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeWithAggregatesFilter<"AttendanceEvent"> | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"AttendanceEvent"> | Date | string | null
   serverReceivedAt?: Prisma.DateTimeWithAggregatesFilter<"AttendanceEvent"> | Date | string
@@ -440,6 +453,7 @@ export type AttendanceEventScalarWhereWithAggregatesInput = {
 
 export type AttendanceEventCreateInput = {
   id?: string
+  attendanceMode?: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt?: Date | string | null
   serverReceivedAt?: Date | string
@@ -463,6 +477,7 @@ export type AttendanceEventUncheckedCreateInput = {
   id?: string
   attendanceDayId: string
   employeeId: string
+  attendanceMode?: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt?: Date | string | null
   serverReceivedAt?: Date | string
@@ -482,6 +497,7 @@ export type AttendanceEventUncheckedCreateInput = {
 
 export type AttendanceEventUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -505,6 +521,7 @@ export type AttendanceEventUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   attendanceDayId?: Prisma.StringFieldUpdateOperationsInput | string
   employeeId?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -526,6 +543,7 @@ export type AttendanceEventCreateManyInput = {
   id?: string
   attendanceDayId: string
   employeeId: string
+  attendanceMode?: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt?: Date | string | null
   serverReceivedAt?: Date | string
@@ -545,6 +563,7 @@ export type AttendanceEventCreateManyInput = {
 
 export type AttendanceEventUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -565,6 +584,7 @@ export type AttendanceEventUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   attendanceDayId?: Prisma.StringFieldUpdateOperationsInput | string
   employeeId?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -592,10 +612,16 @@ export type AttendanceEventOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type AttendanceEventAttendanceDayIdEventTypeCompoundUniqueInput = {
+  attendanceDayId: string
+  eventType: $Enums.AttendanceEventType
+}
+
 export type AttendanceEventCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   attendanceDayId?: Prisma.SortOrder
   employeeId?: Prisma.SortOrder
+  attendanceMode?: Prisma.SortOrder
   eventType?: Prisma.SortOrder
   clientCapturedAt?: Prisma.SortOrder
   serverReceivedAt?: Prisma.SortOrder
@@ -625,6 +651,7 @@ export type AttendanceEventMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   attendanceDayId?: Prisma.SortOrder
   employeeId?: Prisma.SortOrder
+  attendanceMode?: Prisma.SortOrder
   eventType?: Prisma.SortOrder
   clientCapturedAt?: Prisma.SortOrder
   serverReceivedAt?: Prisma.SortOrder
@@ -645,6 +672,7 @@ export type AttendanceEventMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   attendanceDayId?: Prisma.SortOrder
   employeeId?: Prisma.SortOrder
+  attendanceMode?: Prisma.SortOrder
   eventType?: Prisma.SortOrder
   clientCapturedAt?: Prisma.SortOrder
   serverReceivedAt?: Prisma.SortOrder
@@ -817,6 +845,7 @@ export type AttendanceEventUncheckedUpdateManyWithoutPhotoNestedInput = {
 
 export type AttendanceEventCreateWithoutEmployeeInput = {
   id?: string
+  attendanceMode?: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt?: Date | string | null
   serverReceivedAt?: Date | string
@@ -838,6 +867,7 @@ export type AttendanceEventCreateWithoutEmployeeInput = {
 export type AttendanceEventUncheckedCreateWithoutEmployeeInput = {
   id?: string
   attendanceDayId: string
+  attendanceMode?: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt?: Date | string | null
   serverReceivedAt?: Date | string
@@ -888,6 +918,7 @@ export type AttendanceEventScalarWhereInput = {
   id?: Prisma.StringFilter<"AttendanceEvent"> | string
   attendanceDayId?: Prisma.StringFilter<"AttendanceEvent"> | string
   employeeId?: Prisma.StringFilter<"AttendanceEvent"> | string
+  attendanceMode?: Prisma.EnumAttendanceModeFilter<"AttendanceEvent"> | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFilter<"AttendanceEvent"> | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.DateTimeNullableFilter<"AttendanceEvent"> | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFilter<"AttendanceEvent"> | Date | string
@@ -907,6 +938,7 @@ export type AttendanceEventScalarWhereInput = {
 
 export type AttendanceEventCreateWithoutAttendanceDayInput = {
   id?: string
+  attendanceMode?: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt?: Date | string | null
   serverReceivedAt?: Date | string
@@ -928,6 +960,7 @@ export type AttendanceEventCreateWithoutAttendanceDayInput = {
 export type AttendanceEventUncheckedCreateWithoutAttendanceDayInput = {
   id?: string
   employeeId: string
+  attendanceMode?: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt?: Date | string | null
   serverReceivedAt?: Date | string
@@ -973,6 +1006,7 @@ export type AttendanceEventUpdateManyWithWhereWithoutAttendanceDayInput = {
 
 export type AttendanceEventCreateWithoutPhotoInput = {
   id?: string
+  attendanceMode?: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt?: Date | string | null
   serverReceivedAt?: Date | string
@@ -995,6 +1029,7 @@ export type AttendanceEventUncheckedCreateWithoutPhotoInput = {
   id?: string
   attendanceDayId: string
   employeeId: string
+  attendanceMode?: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt?: Date | string | null
   serverReceivedAt?: Date | string
@@ -1040,6 +1075,7 @@ export type AttendanceEventUpdateManyWithWhereWithoutPhotoInput = {
 export type AttendanceEventCreateManyEmployeeInput = {
   id?: string
   attendanceDayId: string
+  attendanceMode?: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt?: Date | string | null
   serverReceivedAt?: Date | string
@@ -1059,6 +1095,7 @@ export type AttendanceEventCreateManyEmployeeInput = {
 
 export type AttendanceEventUpdateWithoutEmployeeInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1080,6 +1117,7 @@ export type AttendanceEventUpdateWithoutEmployeeInput = {
 export type AttendanceEventUncheckedUpdateWithoutEmployeeInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   attendanceDayId?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1100,6 +1138,7 @@ export type AttendanceEventUncheckedUpdateWithoutEmployeeInput = {
 export type AttendanceEventUncheckedUpdateManyWithoutEmployeeInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   attendanceDayId?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1120,6 +1159,7 @@ export type AttendanceEventUncheckedUpdateManyWithoutEmployeeInput = {
 export type AttendanceEventCreateManyAttendanceDayInput = {
   id?: string
   employeeId: string
+  attendanceMode?: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt?: Date | string | null
   serverReceivedAt?: Date | string
@@ -1139,6 +1179,7 @@ export type AttendanceEventCreateManyAttendanceDayInput = {
 
 export type AttendanceEventUpdateWithoutAttendanceDayInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1160,6 +1201,7 @@ export type AttendanceEventUpdateWithoutAttendanceDayInput = {
 export type AttendanceEventUncheckedUpdateWithoutAttendanceDayInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   employeeId?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1180,6 +1222,7 @@ export type AttendanceEventUncheckedUpdateWithoutAttendanceDayInput = {
 export type AttendanceEventUncheckedUpdateManyWithoutAttendanceDayInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   employeeId?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1201,6 +1244,7 @@ export type AttendanceEventCreateManyPhotoInput = {
   id?: string
   attendanceDayId: string
   employeeId: string
+  attendanceMode?: $Enums.AttendanceMode
   eventType: $Enums.AttendanceEventType
   clientCapturedAt?: Date | string | null
   serverReceivedAt?: Date | string
@@ -1219,6 +1263,7 @@ export type AttendanceEventCreateManyPhotoInput = {
 
 export type AttendanceEventUpdateWithoutPhotoInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1241,6 +1286,7 @@ export type AttendanceEventUncheckedUpdateWithoutPhotoInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   attendanceDayId?: Prisma.StringFieldUpdateOperationsInput | string
   employeeId?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1261,6 +1307,7 @@ export type AttendanceEventUncheckedUpdateManyWithoutPhotoInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   attendanceDayId?: Prisma.StringFieldUpdateOperationsInput | string
   employeeId?: Prisma.StringFieldUpdateOperationsInput | string
+  attendanceMode?: Prisma.EnumAttendanceModeFieldUpdateOperationsInput | $Enums.AttendanceMode
   eventType?: Prisma.EnumAttendanceEventTypeFieldUpdateOperationsInput | $Enums.AttendanceEventType
   clientCapturedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   serverReceivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1283,6 +1330,7 @@ export type AttendanceEventSelect<ExtArgs extends runtime.Types.Extensions.Inter
   id?: boolean
   attendanceDayId?: boolean
   employeeId?: boolean
+  attendanceMode?: boolean
   eventType?: boolean
   clientCapturedAt?: boolean
   serverReceivedAt?: boolean
@@ -1307,6 +1355,7 @@ export type AttendanceEventSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   id?: boolean
   attendanceDayId?: boolean
   employeeId?: boolean
+  attendanceMode?: boolean
   eventType?: boolean
   clientCapturedAt?: boolean
   serverReceivedAt?: boolean
@@ -1331,6 +1380,7 @@ export type AttendanceEventSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   id?: boolean
   attendanceDayId?: boolean
   employeeId?: boolean
+  attendanceMode?: boolean
   eventType?: boolean
   clientCapturedAt?: boolean
   serverReceivedAt?: boolean
@@ -1355,6 +1405,7 @@ export type AttendanceEventSelectScalar = {
   id?: boolean
   attendanceDayId?: boolean
   employeeId?: boolean
+  attendanceMode?: boolean
   eventType?: boolean
   clientCapturedAt?: boolean
   serverReceivedAt?: boolean
@@ -1372,7 +1423,7 @@ export type AttendanceEventSelectScalar = {
   createdAt?: boolean
 }
 
-export type AttendanceEventOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "attendanceDayId" | "employeeId" | "eventType" | "clientCapturedAt" | "serverReceivedAt" | "latitude" | "longitude" | "locationAccuracy" | "locationCapturedAt" | "address" | "photoId" | "source" | "deviceInfo" | "outsideGeofence" | "distanceMeters" | "legacyAbsensiId" | "createdAt", ExtArgs["result"]["attendanceEvent"]>
+export type AttendanceEventOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "attendanceDayId" | "employeeId" | "attendanceMode" | "eventType" | "clientCapturedAt" | "serverReceivedAt" | "latitude" | "longitude" | "locationAccuracy" | "locationCapturedAt" | "address" | "photoId" | "source" | "deviceInfo" | "outsideGeofence" | "distanceMeters" | "legacyAbsensiId" | "createdAt", ExtArgs["result"]["attendanceEvent"]>
 export type AttendanceEventInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   attendanceDay?: boolean | Prisma.AttendanceDayDefaultArgs<ExtArgs>
   employee?: boolean | Prisma.EmployeeDefaultArgs<ExtArgs>
@@ -1400,6 +1451,7 @@ export type $AttendanceEventPayload<ExtArgs extends runtime.Types.Extensions.Int
     id: string
     attendanceDayId: string
     employeeId: string
+    attendanceMode: $Enums.AttendanceMode
     eventType: $Enums.AttendanceEventType
     clientCapturedAt: Date | null
     serverReceivedAt: Date
@@ -1844,6 +1896,7 @@ export interface AttendanceEventFieldRefs {
   readonly id: Prisma.FieldRef<"AttendanceEvent", 'String'>
   readonly attendanceDayId: Prisma.FieldRef<"AttendanceEvent", 'String'>
   readonly employeeId: Prisma.FieldRef<"AttendanceEvent", 'String'>
+  readonly attendanceMode: Prisma.FieldRef<"AttendanceEvent", 'AttendanceMode'>
   readonly eventType: Prisma.FieldRef<"AttendanceEvent", 'AttendanceEventType'>
   readonly clientCapturedAt: Prisma.FieldRef<"AttendanceEvent", 'DateTime'>
   readonly serverReceivedAt: Prisma.FieldRef<"AttendanceEvent", 'DateTime'>

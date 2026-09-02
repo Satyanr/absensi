@@ -101,3 +101,11 @@ export const AuditAction = {
 } as const
 
 export type AuditAction = (typeof AuditAction)[keyof typeof AuditAction]
+
+
+export const AttendanceMode = {
+  OFFICE: 'OFFICE',
+  PROJECT: 'PROJECT'
+} as const
+
+export type AttendanceMode = (typeof AttendanceMode)[keyof typeof AttendanceMode]
