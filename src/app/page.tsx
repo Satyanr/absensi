@@ -521,6 +521,13 @@ export default function HomePage() {
       (location && location.officeCheck?.allowed)),
   );
 
+  const locationReady = Boolean(
+    location &&
+    (attendanceMode === "PROJECT" ||
+      alreadyCheckedIn ||
+      location.officeCheck?.allowed),
+  );
+
   return (
     <main className="min-h-screen bg-neutral-100 px-4 py-8">
       <div className="mx-auto max-w-md space-y-4">
@@ -837,18 +844,22 @@ export default function HomePage() {
 
                           <span
                             className={
-                              location
+                              locationReady
                                 ? "font-medium text-green-700"
-                                : attendanceMode === "PROJECT"
-                                  ? "text-neutral-500"
-                                  : "text-red-600"
+                                : location
+                                  ? "font-medium text-red-600"
+                                  : attendanceMode === "PROJECT"
+                                    ? "text-neutral-500"
+                                    : "text-red-600"
                             }
                           >
-                            {location
+                            {locationReady
                               ? "✓ Siap"
-                              : attendanceMode === "PROJECT"
-                                ? "Opsional"
-                                : "Wajib"}
+                              : location
+                                ? "Belum valid"
+                                : attendanceMode === "PROJECT"
+                                  ? "Opsional"
+                                  : "Wajib"}
                           </span>
                         </div>
 

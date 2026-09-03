@@ -30,12 +30,26 @@ const locationSchema =
         .max(10000),
   });
 
-const MAX_ACCURACY =
-  Number(
+function getMaxAccuracy() {
+  const value = Number(
     process.env
       .MAX_OFFICE_GPS_ACCURACY_METERS ??
       500,
   );
+
+  if (
+    !Number.isFinite(value) ||
+    value <= 0 ||
+    value > 10000
+  ) {
+    return 500;
+  }
+
+  return value;
+}
+
+const MAX_ACCURACY =
+  getMaxAccuracy();
 
 export async function POST(
   request: Request,
