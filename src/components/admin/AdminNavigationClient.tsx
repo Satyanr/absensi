@@ -57,6 +57,18 @@ const navigation = [
   },
 
   {
+  href:
+    "/admin/notifications",
+
+  label:
+    "Notifikasi",
+
+  roles: [
+    "ADMIN",
+  ],
+},
+
+  {
     href:
       "/admin/reports",
 

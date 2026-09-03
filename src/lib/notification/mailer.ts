@@ -1,7 +1,13 @@
 import nodemailer, { type Transporter } from "nodemailer";
-import {
-  prisma,
-} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
+
+type MailAttachment = {
+  filename: string;
+
+  path: string;
+
+  contentType?: string;
+};
 
 type SendMailInput = {
   to: string | string[];
@@ -11,6 +17,8 @@ type SendMailInput = {
   text: string;
 
   html?: string;
+
+  attachments?: MailAttachment[];
 };
 
 type NotificationType =
@@ -19,23 +27,15 @@ type NotificationType =
   | "LEAVE_REJECTED"
   | "TEST_EMAIL";
 
-type SendTrackedMailInput =
-  SendMailInput & {
-    notificationType:
-      NotificationType;
+type SendTrackedMailInput = SendMailInput & {
+  notificationType: NotificationType;
 
-    entityType?: string;
+  entityType?: string;
 
-    entityId?: string;
+  entityId?: string;
 
-    metadata?: Record<
-      string,
-      string |
-        number |
-        boolean |
-        null
-    >;
-  };
+  metadata?: Record<string, string | number | boolean | null>;
+};
 
 let transporter: Transporter | null = null;
 
@@ -155,22 +155,15 @@ function getTransporter() {
   return transporter;
 }
 
-function getErrorMessage(
-  error: unknown,
-) {
+function getErrorMessage(error: unknown) {
   if (error instanceof Error) {
-    return error.message.slice(
-      0,
-      2000,
-    );
+    return error.message.slice(0, 2000);
   }
 
   return "Kesalahan SMTP tidak diketahui.";
 }
 
-async function sendMailInternal(
-  input: SendMailInput,
-): Promise<
+async function sendMailInternal(input: SendMailInput): Promise<
   | {
       ok: true;
     }
@@ -180,45 +173,35 @@ async function sendMailInternal(
       error: string;
     }
 > {
-  const config =
-    getSmtpConfig();
+  const config = getSmtpConfig();
 
-  const mailer =
-    getTransporter();
+  const mailer = getTransporter();
 
-  if (
-    !config ||
-    !mailer
-  ) {
+  if (!config || !mailer) {
     return {
       ok: false,
 
-      error:
-        "SMTP belum dikonfigurasi.",
+      error: "SMTP belum dikonfigurasi.",
     };
   }
 
   try {
     await mailer.sendMail({
       from: {
-        name:
-          config.fromName,
+        name: config.fromName,
 
-        address:
-          config.fromEmail,
+        address: config.fromEmail,
       },
 
-      to:
-        input.to,
+      to: input.to,
 
-      subject:
-        input.subject,
+      subject: input.subject,
 
-      text:
-        input.text,
+      text: input.text,
 
-      html:
-        input.html,
+      html: input.html,
+
+      attachments: input.attachments,
     });
 
     return {
@@ -228,114 +211,71 @@ async function sendMailInternal(
     return {
       ok: false,
 
-      error:
-        getErrorMessage(
-          error,
-        ),
+      error: getErrorMessage(error),
     };
   }
 }
 
-export async function sendMailBestEffort(
-  input: SendMailInput,
-) {
-  const result =
-    await sendMailInternal(
-      input,
-    );
+export async function sendMailBestEffort(input: SendMailInput) {
+  const result = await sendMailInternal(input);
 
   if (!result.ok) {
-    console.error(
-      "Gagal mengirim email:",
-      result.error,
-    );
+    console.error("Gagal mengirim email:", result.error);
   }
 
   return result.ok;
 }
 
-export async function sendTrackedMailBestEffort(
-  input: SendTrackedMailInput,
-) {
+export async function sendTrackedMailBestEffort(input: SendTrackedMailInput) {
   /*
    * Logging tidak boleh membuat
    * email utama gagal dikirim.
    */
-  let logId:
-    string | null = null;
+  let logId: string | null = null;
 
   try {
-    const log =
-      await prisma.notificationLog.create({
-        data: {
-          channel:
-            "EMAIL",
+    const log = await prisma.notificationLog.create({
+      data: {
+        channel: "EMAIL",
 
-          type:
-            input.notificationType,
+        type: input.notificationType,
 
-          status:
-            "PENDING",
+        status: "PENDING",
 
-          recipient:
-            Array.isArray(
-              input.to,
-            )
-              ? input.to.join(
-                  ", ",
-                )
-              : input.to,
+        recipient: Array.isArray(input.to) ? input.to.join(", ") : input.to,
 
-          subject:
-            input.subject,
+        subject: input.subject,
 
-          entityType:
-            input.entityType ??
-            null,
+        entityType: input.entityType ?? null,
 
-          entityId:
-            input.entityId ??
-            null,
+        entityId: input.entityId ?? null,
 
-          metadata:
-            input.metadata,
-        },
+        metadata: input.metadata,
+      },
 
-        select: {
-          id: true,
-        },
-      });
+      select: {
+        id: true,
+      },
+    });
 
-    logId =
-      log.id;
+    logId = log.id;
   } catch (error) {
-    console.error(
-      "Gagal membuat NotificationLog:",
-      error,
-    );
+    console.error("Gagal membuat NotificationLog:", error);
   }
 
-  const attemptedAt =
-    new Date();
+  const attemptedAt = new Date();
 
-  const result =
-    await sendMailInternal(
-      input,
-    );
+  const result = await sendMailInternal(input);
 
   if (!result.ok) {
-    console.error(
-      "Gagal mengirim email:",
-      result.error,
-    );
+    console.error("Gagal mengirim email:", result.error);
   }
 
   if (logId) {
     try {
       await prisma.notificationLog.update({
         where: {
-          id:
-            logId,
+          id: logId,
         },
 
         data: {
@@ -343,23 +283,13 @@ export async function sendTrackedMailBestEffort(
             increment: 1,
           },
 
-          lastAttemptAt:
-            attemptedAt,
+          lastAttemptAt: attemptedAt,
 
-          status:
-            result.ok
-              ? "SENT"
-              : "FAILED",
+          status: result.ok ? "SENT" : "FAILED",
 
-          sentAt:
-            result.ok
-              ? attemptedAt
-              : null,
+          sentAt: result.ok ? attemptedAt : null,
 
-          lastError:
-            result.ok
-              ? null
-              : result.error,
+          lastError: result.ok ? null : result.error,
         },
       });
     } catch (error) {
@@ -368,11 +298,47 @@ export async function sendTrackedMailBestEffort(
        * jadi kegagalan update log
        * tidak boleh dilempar.
        */
-      console.error(
-        "Gagal memperbarui NotificationLog:",
-        error,
-      );
+      console.error("Gagal memperbarui NotificationLog:", error);
     }
+  }
+
+  return result.ok;
+}
+
+export async function retryTrackedMailBestEffort(
+  logId: string,
+  input: SendMailInput,
+) {
+  const attemptedAt = new Date();
+
+  const result = await sendMailInternal(input);
+
+  if (!result.ok) {
+    console.error("Gagal mengirim ulang email:", result.error);
+  }
+
+  try {
+    await prisma.notificationLog.update({
+      where: {
+        id: logId,
+      },
+
+      data: {
+        attempts: {
+          increment: 1,
+        },
+
+        lastAttemptAt: attemptedAt,
+
+        status: result.ok ? "SENT" : "FAILED",
+
+        sentAt: result.ok ? attemptedAt : null,
+
+        lastError: result.ok ? null : result.error,
+      },
+    });
+  } catch (error) {
+    console.error("Gagal memperbarui log retry:", error);
   }
 
   return result.ok;

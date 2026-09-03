@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 
 import { sendTrackedMailBestEffort } from "@/lib/notification/mailer";
 
+import { getApprovedLeaveEmailAttachment } from "@/lib/notification/leave-document";
+
 type LeaveType = "PERMISSION" | "SICK" | "ANNUAL_LEAVE";
 
 function leaveTypeLabel(type: LeaveType) {
@@ -244,8 +246,7 @@ type DecisionInput = {
 
   reviewerName: string;
 
-  leaveRequestId:
-  string;
+  leaveRequestId: string;
 };
 
 export async function notifyLeaveDecision(input: DecisionInput) {
@@ -264,6 +265,11 @@ export async function notifyLeaveDecision(input: DecisionInput) {
 
     const approved = input.status === "APPROVED";
 
+    const finalDocument =
+      approved && input.type === "ANNUAL_LEAVE"
+        ? await getApprovedLeaveEmailAttachment(input.leaveRequestId)
+        : null;
+
     const statusLabel = approved ? "Disetujui" : "Ditolak";
 
     const start = formatDate(input.startDate);
@@ -281,6 +287,14 @@ export async function notifyLeaveDecision(input: DecisionInput) {
       `Alasan: ${input.reason}`,
       `Status: ${statusLabel}`,
       `Diproses oleh: ${input.reviewerName}`,
+
+      ...(finalDocument
+        ? [
+            "",
+            "Dokumen final Cuti yang telah disetujui terlampir pada email ini.",
+          ]
+        : []),
+
       "",
       "Email ini dikirim otomatis oleh Sistem Absensi.",
     ].join("\n");
@@ -326,42 +340,51 @@ export async function notifyLeaveDecision(input: DecisionInput) {
         <p style="margin-top:20px;color:#666;font-size:12px">
           Email ini dikirim otomatis oleh Sistem Absensi.
         </p>
+
+        ${
+          finalDocument
+            ? `
+      <div style="margin-top:20px;padding:12px;background:#f0fdf4;border-radius:8px">
+        <strong>Dokumen Final Cuti</strong>
+
+        <p style="margin:4px 0 0">
+          Dokumen final yang telah disetujui dilampirkan pada email ini.
+        </p>
+      </div>
+    `
+            : ""
+        }
       </div>
     `;
 
     await sendTrackedMailBestEffort({
-  to:
-    email,
+      to: email,
 
-  subject,
+      subject,
 
-  text,
+      text,
 
-  html,
+      html,
 
-  notificationType:
-    input.status ===
-    "APPROVED"
-      ? "LEAVE_APPROVED"
-      : "LEAVE_REJECTED",
+      attachments: finalDocument ? [finalDocument] : undefined,
 
-  entityType:
-    "LeaveRequest",
+      notificationType:
+        input.status === "APPROVED" ? "LEAVE_APPROVED" : "LEAVE_REJECTED",
 
-  entityId:
-    input.leaveRequestId,
+      entityType: "LeaveRequest",
 
-  metadata: {
-    employeeCode:
-      input.employeeCode,
+      entityId: input.leaveRequestId,
 
-    leaveType:
-      input.type,
+      metadata: {
+        employeeCode: input.employeeCode,
 
-    leaveStatus:
-      input.status,
-  },
-});
+        leaveType: input.type,
+
+        leaveStatus: input.status,
+
+        finalDocumentAttached: Boolean(finalDocument),
+      },
+    });
   } catch (error) {
     console.error("Notifikasi hasil pengajuan gagal:", error);
   }

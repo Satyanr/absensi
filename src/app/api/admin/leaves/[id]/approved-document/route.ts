@@ -236,7 +236,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 
-  if (user.role === "EMPLOYEE") {
+  if (user.role !== "ADMIN" && user.role !== "LEADER") {
     return NextResponse.json(
       {
         error: "Tidak memiliki akses.",
