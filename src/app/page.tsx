@@ -777,8 +777,20 @@ export default function HomePage() {
                         </div>
 
                         {location && (
-                          <span className="text-sm font-medium text-green-700">
-                            ✓ Siap
+                          <span
+                            className={`text-sm font-medium ${
+                              attendanceMode === "PROJECT" ||
+                              alreadyCheckedIn ||
+                              location.officeCheck?.allowed
+                                ? "text-green-700"
+                                : "text-red-600"
+                            }`}
+                          >
+                            {attendanceMode === "PROJECT" ||
+                            alreadyCheckedIn ||
+                            location.officeCheck?.allowed
+                              ? "✓ Siap"
+                              : "Di luar area"}
                           </span>
                         )}
                       </div>
@@ -797,10 +809,51 @@ export default function HomePage() {
                             Akurasi GPS ±{Math.round(location.accuracy)} meter
                           </p>
                         </div>
-                        
                       )}
 
-                      
+                      {attendanceMode === "OFFICE" &&
+                        !alreadyCheckedIn &&
+                        location?.officeCheck && (
+                          <div
+                            className={`mt-3 rounded-xl p-3 ${
+                              location.officeCheck.allowed
+                                ? "bg-green-50 text-green-800"
+                                : "bg-red-50 text-red-700"
+                            }`}
+                          >
+                            <p className="text-xs font-medium uppercase tracking-wide">
+                              Kantor Terdekat
+                            </p>
+
+                            <p className="mt-1 font-semibold">
+                              {location.officeCheck.nearestOffice.name}
+                            </p>
+
+                            <p className="mt-1 text-sm">
+                              Jarak sekitar{" "}
+                              {location.officeCheck.nearestOffice
+                                .distanceMeters < 1000
+                                ? `${location.officeCheck.nearestOffice.distanceMeters} meter`
+                                : `${(
+                                    location.officeCheck.nearestOffice
+                                      .distanceMeters / 1000
+                                  ).toFixed(2)} km`}
+                            </p>
+
+                            {!location.officeCheck.accuracyGood ? (
+                              <p className="mt-2 text-sm font-medium">
+                                Akurasi GPS terlalu rendah. Silakan ambil ulang
+                                lokasi.
+                              </p>
+                            ) : (
+                              <p className="mt-2 text-sm font-medium">
+                                {location.officeCheck.allowed
+                                  ? "✓ Anda berada di area absensi kantor."
+                                  : "Anda berada di luar area absensi kantor."}
+                              </p>
+                            )}
+                          </div>
+                        )}
 
                       <button
                         type="button"
@@ -900,11 +953,8 @@ export default function HomePage() {
                           {submitting ? "Mengirim Absensi..." : "Absen Pulang"}
                         </button>
                       )}
-
-                      
                   </>
                 )}
-                
 
                 {projectCompleted && (
                   <div className="rounded-2xl bg-green-50 p-5 text-center">
@@ -931,7 +981,6 @@ export default function HomePage() {
                 )}
               </>
             )}
-            
           </>
         )}
 
