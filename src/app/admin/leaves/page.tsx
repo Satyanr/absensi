@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { redirect } from "next/navigation";
 
 import AdminNavigation from "@/components/admin/AdminNavigation";
@@ -44,6 +46,12 @@ function typeLabel(type: "PERMISSION" | "SICK" | "ANNUAL_LEAVE") {
   }
 }
 
+type Props = {
+  searchParams: Promise<{
+    q?: string | string[];
+  }>;
+};
+
 function statusLabel(
   status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED",
 ) {
@@ -62,7 +70,7 @@ function statusLabel(
   }
 }
 
-export default async function LeavesPage() {
+export default async function LeavesPage({ searchParams }: Props) {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -72,6 +80,12 @@ export default async function LeavesPage() {
   if (user.role !== "ADMIN" && user.role !== "LEADER") {
     redirect("/");
   }
+
+  const params = await searchParams;
+
+  const rawQuery = Array.isArray(params.q) ? params.q[0] : params.q;
+
+  const query = rawQuery?.trim().slice(0, 80) ?? "";
 
   const [employees, leaveRequests] = await Promise.all([
     prisma.employee.findMany({
@@ -92,6 +106,41 @@ export default async function LeavesPage() {
     }),
 
     prisma.leaveRequest.findMany({
+      where:
+        query.length > 0
+          ? {
+              OR: [
+                {
+                  reason: {
+                    contains: query,
+
+                    mode: "insensitive",
+                  },
+                },
+
+                {
+                  employee: {
+                    name: {
+                      contains: query,
+
+                      mode: "insensitive",
+                    },
+                  },
+                },
+
+                {
+                  employee: {
+                    employeeCode: {
+                      contains: query,
+
+                      mode: "insensitive",
+                    },
+                  },
+                },
+              ],
+            }
+          : undefined,
+
       select: {
         id: true,
         type: true,
@@ -170,13 +219,51 @@ export default async function LeavesPage() {
               <h2 className="font-semibold">Daftar Pengajuan</h2>
 
               <p className="mt-1 text-sm text-neutral-500">
-                Maksimal 100 pengajuan terbaru.
+                Cari berdasarkan nama, kode karyawan, atau alasan.
+              </p>
+
+              <form
+                method="get"
+                className="mt-4 flex flex-col gap-2 sm:flex-row"
+              >
+                <input
+                  type="search"
+                  name="q"
+                  defaultValue={query}
+                  placeholder="Contoh: EMP001 atau Budi"
+                  autoComplete="off"
+                  className="min-w-0 flex-1 rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-blue-500"
+                />
+
+                <button
+                  type="submit"
+                  className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
+                >
+                  Cari
+                </button>
+
+                {query && (
+                  <Link
+                    href="/admin/leaves"
+                    className="rounded-xl border border-neutral-300 px-5 py-3 text-center text-sm font-semibold text-neutral-600"
+                  >
+                    Reset
+                  </Link>
+                )}
+              </form>
+
+              <p className="mt-3 text-xs text-neutral-500">
+                {query
+                  ? `${leaveRequests.length} hasil untuk "${query}"`
+                  : "Maksimal 100 pengajuan terbaru."}
               </p>
             </div>
 
             {leaveRequests.length === 0 ? (
               <div className="p-10 text-center text-sm text-neutral-500">
-                Belum ada pengajuan.
+                {query
+                  ? `Tidak ada pengajuan yang cocok dengan "${query}".`
+                  : "Belum ada pengajuan."}
               </div>
             ) : (
               <div className="divide-y divide-neutral-100">

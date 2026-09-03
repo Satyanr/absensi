@@ -13,12 +13,22 @@ type Employee = {
 
 type LeaveType = "PERMISSION" | "SICK" | "ANNUAL_LEAVE";
 
+function normalizeEmployeeCode(value: string) {
+  const cleaned = value.toUpperCase().replace(/\s+/g, "");
+
+  const suffix = cleaned.startsWith("EMP") ? cleaned.slice(3) : cleaned;
+
+  return `EMP${suffix}`;
+}
+
 function PublicLeaveContent() {
   const searchParams = useSearchParams();
 
   const initialEmployeeCode = searchParams.get("employeeCode");
 
-  const [employeeCode, setEmployeeCode] = useState(initialEmployeeCode ?? "");
+  const [employeeCode, setEmployeeCode] = useState(
+    normalizeEmployeeCode(initialEmployeeCode ?? ""),
+  );
 
   const [employee, setEmployee] = useState<Employee | null>(null);
 
@@ -45,14 +55,15 @@ function PublicLeaveContent() {
   const [success, setSuccess] = useState("");
 
   async function lookupEmployee(code: string) {
-    const cleanCode = code.trim();
+    const cleanCode = normalizeEmployeeCode(code.trim());
 
-    if (!cleanCode) {
-      setError("Kode karyawan wajib diisi.");
+    if (cleanCode === "EMP") {
+      setError("Nomor kode karyawan wajib diisi.");
 
       return;
     }
 
+    setEmployeeCode(cleanCode);
     setLookupLoading(true);
     setError("");
     setSuccess("");
@@ -245,7 +256,7 @@ function PublicLeaveContent() {
 
   function resetEmployee() {
     setEmployee(null);
-    setEmployeeCode("");
+    setEmployeeCode("EMP");
 
     setType("PERMISSION");
     setStartDate("");
@@ -297,11 +308,16 @@ function PublicLeaveContent() {
 
             <input
               value={employeeCode}
-              onChange={(event) => setEmployeeCode(event.target.value)}
-              placeholder="Contoh: EMP001"
+              onChange={(event) =>
+                setEmployeeCode(normalizeEmployeeCode(event.target.value))
+              }
+              placeholder="EMP001"
               autoComplete="off"
               className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none focus:border-blue-500"
             />
+            <p className="mt-1 text-xs text-neutral-500">
+              Prefix EMP otomatis. Cukup ketik nomor karyawan, contoh 001.
+            </p>
 
             <button
               type="submit"
