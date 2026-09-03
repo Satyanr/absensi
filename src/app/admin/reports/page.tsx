@@ -763,30 +763,12 @@ export default async function ReportsPage({ searchParams }: Props) {
                               />
 
                               <Info
-                                label="Lokasi Masuk"
-                                value={
-                                  item.checkInLocation ??
-                                  "Nama lokasi tidak tersedia"
-                                }
-                              />
-
-                              <Info
                                 label="Status Pulang"
                                 value={getCheckOutLabel(
                                   item.attendanceMode,
                                   item.checkOutStatus,
                                 )}
                               />
-
-                              {item.attendanceMode === "OFFICE" && (
-                                <Info
-                                  label="Lokasi Pulang"
-                                  value={
-                                    item.checkOutLocation ??
-                                    "Nama lokasi tidak tersedia"
-                                  }
-                                />
-                              )}
                             </>
                           ) : (
                             <>
@@ -867,13 +849,9 @@ export default async function ReportsPage({ searchParams }: Props) {
 
                           <th className="px-5 py-4">Status Masuk</th>
 
-                          <th className="px-5 py-4">Lokasi Masuk</th>
-
                           <th className="px-5 py-4">Pulang</th>
 
                           <th className="px-5 py-4">Status Pulang</th>
-
-                          <th className="px-5 py-4">Lokasi Pulang</th>
 
                           <th className="px-5 py-4">Selfie</th>
 
@@ -921,12 +899,6 @@ export default async function ReportsPage({ searchParams }: Props) {
                                 : "Disetujui"}
                             </td>
 
-                            <td className="min-w-56 px-5 py-4">
-                              {item.source === "ATTENDANCE"
-                                ? (item.checkInLocation ?? "—")
-                                : "—"}
-                            </td>
-
                             <td className="whitespace-nowrap px-5 py-4">
                               {item.source === "ATTENDANCE"
                                 ? item.attendanceMode === "PROJECT"
@@ -941,13 +913,6 @@ export default async function ReportsPage({ searchParams }: Props) {
                                     item.attendanceMode,
                                     item.checkOutStatus,
                                   )
-                                : "—"}
-                            </td>
-
-                            <td className="min-w-56 px-5 py-4">
-                              {item.source === "ATTENDANCE" &&
-                              item.attendanceMode === "OFFICE"
-                                ? (item.checkOutLocation ?? "—")
                                 : "—"}
                             </td>
 
@@ -1086,28 +1051,59 @@ function getDescription(item: {
   overtimeMinutes: number;
 
   notes: string | null;
+
+  checkInLocation: string | null;
+
+  checkOutLocation: string | null;
 }) {
-  if (item.notes) {
-    return item.notes;
-  }
-
-  if (item.attendanceMode === "PROJECT") {
-    return "In Project";
-  }
-
   const values: string[] = [];
 
-  if (item.lateMinutes > 0) {
-    values.push(`Terlambat ${item.lateMinutes} menit`);
+  /*
+   * Pertahankan perilaku lama:
+   * notes manual menjadi keterangan utama.
+   */
+  if (item.notes) {
+    values.push(item.notes);
+  } else if (item.attendanceMode === "PROJECT") {
+    values.push("In Project");
+  } else {
+    if (item.lateMinutes > 0) {
+      values.push(`Terlambat ${item.lateMinutes} menit`);
+    }
+
+    if (item.earlyLeaveMinutes > 0) {
+      values.push(`Pulang awal ${item.earlyLeaveMinutes} menit`);
+    }
+
+    if (item.overtimeMinutes > 0) {
+      values.push(`Lembur ${item.overtimeMinutes} menit`);
+    }
+
+    if (values.length === 0) {
+      values.push("Normal");
+    }
   }
 
-  if (item.earlyLeaveMinutes > 0) {
-    values.push(`Pulang awal ${item.earlyLeaveMinutes} menit`);
+  /*
+   * Lokasi hanya tambahan
+   * informasi pada Keterangan.
+   */
+  if (item.checkInLocation) {
+    values.push(
+      item.attendanceMode === "PROJECT"
+        ? `Lokasi: ${item.checkInLocation}`
+        : `Lokasi masuk: ${item.checkInLocation}`,
+    );
   }
 
-  if (item.overtimeMinutes > 0) {
-    values.push(`Lembur ${item.overtimeMinutes} menit`);
+  /*
+   * Checkout OFFICE tidak memakai
+   * geofence, tetapi alamat aktual
+   * tetap boleh menjadi informasi.
+   */
+  if (item.attendanceMode === "OFFICE" && item.checkOutLocation) {
+    values.push(`Lokasi pulang: ${item.checkOutLocation}`);
   }
 
-  return values.length ? values.join(" • ") : "Normal";
+  return values.join(" • ");
 }

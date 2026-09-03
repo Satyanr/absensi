@@ -162,34 +162,54 @@ function getDescription(item: {
   attendanceMode: "OFFICE" | "PROJECT";
 
   lateMinutes: number;
+
   earlyLeaveMinutes: number;
+
   overtimeMinutes: number;
 
   notes: string | null;
+
+  checkInLocation: string | null;
+
+  checkOutLocation: string | null;
 }) {
-  if (item.notes) {
-    return item.notes;
-  }
-
-  if (item.attendanceMode === "PROJECT") {
-    return "In Project";
-  }
-
   const values: string[] = [];
 
-  if (item.lateMinutes > 0) {
-    values.push(`Terlambat ${item.lateMinutes} menit`);
+  if (item.notes) {
+    values.push(item.notes);
+  } else if (item.attendanceMode === "PROJECT") {
+    values.push("In Project");
+  } else {
+    if (item.lateMinutes > 0) {
+      values.push(`Terlambat ${item.lateMinutes} menit`);
+    }
+
+    if (item.earlyLeaveMinutes > 0) {
+      values.push(`Pulang awal ${item.earlyLeaveMinutes} menit`);
+    }
+
+    if (item.overtimeMinutes > 0) {
+      values.push(`Lembur ${item.overtimeMinutes} menit`);
+    }
+
+    if (values.length === 0) {
+      values.push("Normal");
+    }
   }
 
-  if (item.earlyLeaveMinutes > 0) {
-    values.push(`Pulang awal ${item.earlyLeaveMinutes} menit`);
+  if (item.checkInLocation) {
+    values.push(
+      item.attendanceMode === "PROJECT"
+        ? `Lokasi: ${item.checkInLocation}`
+        : `Lokasi masuk: ${item.checkInLocation}`,
+    );
   }
 
-  if (item.overtimeMinutes > 0) {
-    values.push(`Lembur ${item.overtimeMinutes} menit`);
+  if (item.attendanceMode === "OFFICE" && item.checkOutLocation) {
+    values.push(`Lokasi pulang: ${item.checkOutLocation}`);
   }
 
-  return values.length ? values.join(" | ") : "Normal";
+  return values.join(" | ");
 }
 
 type PhotoData = {
@@ -837,7 +857,7 @@ export async function GET(request: NextRequest) {
    * ======================
    */
 
-  worksheet.mergeCells("A1:Q1");
+  worksheet.mergeCells("A1:O1");
 
   const titleCell = worksheet.getCell("A1");
 
@@ -856,13 +876,13 @@ export async function GET(request: NextRequest) {
 
   worksheet.getRow(1).height = 26;
 
-  worksheet.mergeCells("A2:Q2");
+  worksheet.mergeCells("A2:O2");
 
   worksheet.getCell("A2").value = `Periode: ${formatDate(
     fromDate,
   )} - ${formatDate(toDate)}`;
 
-  worksheet.mergeCells("A3:Q3");
+  worksheet.mergeCells("A3:O3");
 
   worksheet.getCell("A3").value = `Karyawan: ${
     selectedEmployee
@@ -870,7 +890,7 @@ export async function GET(request: NextRequest) {
       : "Semua Karyawan"
   }`;
 
-  worksheet.mergeCells("A4:Q4");
+  worksheet.mergeCells("A4:O4");
 
   worksheet.getCell("A4").value = `Jenis: ${
     mode === "OFFICE" ? "Kantor" : mode === "PROJECT" ? "In Project" : "Semua"
@@ -890,26 +910,31 @@ export async function GET(request: NextRequest) {
 
   headerRow.values = [
     "Tanggal",
-    "Kode Karyawan",
-    "Nama Karyawan",
-    "Status Karyawan",
-    "Jenis",
-    "Jam Masuk",
-    "Status Masuk",
 
-    "Lokasi Masuk",
+    "Kode Karyawan",
+
+    "Nama Karyawan",
+
+    "Status Karyawan",
+
+    "Jenis",
+
+    "Jam Masuk",
+
+    "Status Masuk",
 
     "Terlambat",
 
     "Jam Pulang",
+
     "Status Pulang",
 
-    "Lokasi Pulang",
-
     "Pulang Awal",
+
     "Lembur",
 
     "Selfie Masuk",
+
     "Selfie Pulang",
 
     "Keterangan",
@@ -961,20 +986,39 @@ export async function GET(request: NextRequest) {
 
   worksheet.autoFilter = {
     from: "A6",
-    to: "Q6",
+    to: "O6",
   };
 
   worksheet.columns = [
-    { key: "date", width: 14 },
-    { key: "code", width: 16 },
-    { key: "name", width: 25 },
+    {
+      key: "date",
+      width: 14,
+    },
+
+    {
+      key: "code",
+      width: 16,
+    },
+
+    {
+      key: "name",
+      width: 25,
+    },
+
     {
       key: "employeeStatus",
       width: 14,
     },
-    { key: "type", width: 16 },
 
-    { key: "checkIn", width: 13 },
+    {
+      key: "type",
+      width: 16,
+    },
+
+    {
+      key: "checkIn",
+      width: 13,
+    },
 
     {
       key: "checkInStatus",
@@ -982,11 +1026,9 @@ export async function GET(request: NextRequest) {
     },
 
     {
-      key: "checkInLocation",
-      width: 38,
+      key: "late",
+      width: 14,
     },
-
-    { key: "late", width: 14 },
 
     {
       key: "checkOut",
@@ -996,11 +1038,6 @@ export async function GET(request: NextRequest) {
     {
       key: "checkOutStatus",
       width: 18,
-    },
-
-    {
-      key: "checkOutLocation",
-      width: 38,
     },
 
     {
@@ -1025,7 +1062,7 @@ export async function GET(request: NextRequest) {
 
     {
       key: "notes",
-      width: 38,
+      width: 55,
     },
   ];
 
@@ -1056,23 +1093,18 @@ export async function GET(request: NextRequest) {
 
         checkInLabel(item.attendanceMode, item.checkInStatus),
 
-        item.checkInLocation ?? "Nama lokasi tidak tersedia",
-
         item.lateMinutes ? `${item.lateMinutes} menit` : "",
 
         item.attendanceMode === "PROJECT" ? "" : formatTime(item.checkOutAt),
 
         checkOutLabel(item.attendanceMode, item.checkOutStatus),
 
-        item.attendanceMode === "PROJECT"
-          ? ""
-          : (item.checkOutLocation ?? "Nama lokasi tidak tersedia"),
-
         item.earlyLeaveMinutes ? `${item.earlyLeaveMinutes} menit` : "",
 
         item.overtimeMinutes ? `${item.overtimeMinutes} menit` : "",
 
         "",
+
         "",
 
         getDescription(item),
@@ -1082,7 +1114,7 @@ export async function GET(request: NextRequest) {
         workbook,
         worksheet,
         rowNumber,
-        15,
+        13,
         item.checkInPhoto,
       );
 
@@ -1090,7 +1122,7 @@ export async function GET(request: NextRequest) {
         workbook,
         worksheet,
         rowNumber,
-        16,
+        14,
         item.checkOutPhoto,
       );
     } else {
@@ -1106,21 +1138,21 @@ export async function GET(request: NextRequest) {
         leaveLabel(item.leaveType),
 
         "",
+
         "Disetujui",
 
-        "", // lokasi masuk
+        "",
+
+        "",
 
         "",
 
         "",
-        "",
 
-        "", // lokasi pulang
-
-        "",
         "",
 
         "—",
+
         "—",
 
         item.reason,
