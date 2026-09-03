@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const usernameSchema = z
+const createUsernameSchema = z
   .string()
   .trim()
   .max(60)
@@ -9,18 +9,26 @@ const usernameSchema = z
     value ? value : undefined,
   );
 
+const updateUsernameSchema = z
+  .union([
+    z.string().trim().max(60),
+    z.null(),
+  ])
+  .optional()
+  .transform((value) =>
+    value === "" ? null : value,
+  );
+
 export const createAdminUserSchema =
   z.object({
     email: z
       .string()
       .trim()
-      .email(
-        "Email tidak valid.",
-      )
+      .email("Email tidak valid.")
       .max(160),
 
     username:
-      usernameSchema,
+      createUsernameSchema,
 
     password: z
       .string()
@@ -37,35 +45,45 @@ export const createAdminUserSchema =
   });
 
 export const updateAdminUserSchema =
-  z.object({
-    email: z
-      .string()
-      .trim()
-      .email(
-        "Email tidak valid.",
-      )
-      .max(160)
-      .optional(),
+  z
+    .object({
+      email: z
+        .string()
+        .trim()
+        .email("Email tidak valid.")
+        .max(160)
+        .optional(),
 
-    username:
-      usernameSchema,
+      username:
+        updateUsernameSchema,
 
-    password: z
-      .string()
-      .min(
-        8,
-        "Password minimal 8 karakter.",
-      )
-      .max(128)
-      .optional(),
+      password: z
+        .string()
+        .min(
+          8,
+          "Password minimal 8 karakter.",
+        )
+        .max(128)
+        .optional(),
 
-    role: z
-      .enum([
-        "ADMIN",
-        "LEADER",
-      ])
-      .optional(),
+      role: z
+        .enum([
+          "ADMIN",
+          "LEADER",
+        ])
+        .optional(),
 
-    active:
-      z.boolean().optional(),
-  });
+      active:
+        z.boolean().optional(),
+    })
+    .refine(
+      (data) =>
+        Object.values(data).some(
+          (value) =>
+            value !== undefined,
+        ),
+      {
+        message:
+          "Tidak ada perubahan.",
+      },
+    );

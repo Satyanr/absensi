@@ -1,22 +1,15 @@
-import {
-  redirect,
-} from "next/navigation";
+import { redirect } from "next/navigation";
 
 import AdminNavigation from "@/components/admin/AdminNavigation";
 import UserCreateForm from "@/components/admin/UserCreateForm";
 import UserStatusButton from "@/components/admin/UserStatusButton";
+import Link from "next/link";
 
-import {
-  getCurrentUser,
-} from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
 
-import {
-  prisma,
-} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
-function roleLabel(
-  role: string,
-) {
+function roleLabel(role: string) {
   switch (role) {
     case "ADMIN":
       return "Admin";
@@ -30,67 +23,55 @@ function roleLabel(
 }
 
 export default async function UsersPage() {
-  const currentUser =
-    await getCurrentUser();
+  const currentUser = await getCurrentUser();
 
   if (!currentUser) {
-    redirect(
-      "/admin/login",
-    );
+    redirect("/admin/login");
   }
 
   /*
    * User management
    * hanya ADMIN.
    */
-  if (
-    currentUser.role !==
-    "ADMIN"
-  ) {
-    redirect(
-      "/admin/dashboard",
-    );
+  if (currentUser.role !== "ADMIN") {
+    redirect("/admin/dashboard");
   }
 
-  const users =
-    await prisma.user.findMany({
-      where: {
-        role: {
-          in: [
-            "ADMIN",
-            "LEADER",
-          ],
-        },
+  const users = await prisma.user.findMany({
+    where: {
+      role: {
+        in: ["ADMIN", "LEADER"],
+      },
+    },
+
+    select: {
+      id: true,
+
+      email: true,
+
+      username: true,
+
+      role: true,
+
+      active: true,
+
+      createdAt: true,
+    },
+
+    orderBy: [
+      {
+        active: "desc",
       },
 
-      select: {
-        id: true,
-
-        email: true,
-
-        username: true,
-
-        role: true,
-
-        active: true,
-
-        createdAt: true,
+      {
+        role: "asc",
       },
 
-      orderBy: [
-        {
-          active: "desc",
-        },
-
-        {
-          role: "asc",
-        },
-
-        {
-          email: "asc",
-        },
-      ],
-    });
+      {
+        email: "asc",
+      },
+    ],
+  });
 
   return (
     <main className="min-h-screen bg-neutral-100">
@@ -98,13 +79,10 @@ export default async function UsersPage() {
         <AdminNavigation />
 
         <div className="mt-6">
-          <h1 className="text-2xl font-bold">
-            User
-          </h1>
+          <h1 className="text-2xl font-bold">User</h1>
 
           <p className="mt-1 text-sm text-neutral-500">
-            Kelola akun Admin
-            dan Leader.
+            Kelola akun Admin dan Leader.
           </p>
         </div>
 
@@ -115,13 +93,10 @@ export default async function UsersPage() {
 
           <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
             <div className="border-b border-neutral-200 p-5">
-              <h2 className="font-semibold">
-                Daftar User
-              </h2>
+              <h2 className="font-semibold">Daftar User</h2>
 
               <p className="mt-1 text-sm text-neutral-500">
-                {users.length} user
-                terdaftar.
+                {users.length} user terdaftar.
               </p>
             </div>
 
@@ -134,80 +109,61 @@ export default async function UsersPage() {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-neutral-50 text-xs uppercase text-neutral-500">
                     <tr>
-                      <th className="px-5 py-4">
-                        User
-                      </th>
+                      <th className="px-5 py-4">User</th>
 
-                      <th className="px-5 py-4">
-                        Role
-                      </th>
+                      <th className="px-5 py-4">Role</th>
 
-                      <th className="px-5 py-4">
-                        Status
-                      </th>
+                      <th className="px-5 py-4">Status</th>
 
-                      <th className="px-5 py-4">
-                        Aksi
-                      </th>
+                      <th className="px-5 py-4">Aksi</th>
                     </tr>
                   </thead>
 
                   <tbody className="divide-y divide-neutral-100">
-                    {users.map(
-                      (user) => (
-                        <tr
-                          key={
-                            user.id
-                          }
-                        >
-                          <td className="px-5 py-4">
-                            <p className="font-medium">
-                              {user.email ??
-                                "—"}
-                            </p>
+                    {users.map((user) => (
+                      <tr key={user.id}>
+                        <td className="px-5 py-4">
+                          <p className="font-medium">{user.email ?? "—"}</p>
 
-                            <p className="text-xs text-neutral-500">
-                              {user.username
-                                ? `@${user.username}`
-                                : "Tanpa username"}
-                            </p>
-                          </td>
+                          <p className="text-xs text-neutral-500">
+                            {user.username
+                              ? `@${user.username}`
+                              : "Tanpa username"}
+                          </p>
+                        </td>
 
-                          <td className="px-5 py-4">
-                            {roleLabel(
-                              user.role,
-                            )}
-                          </td>
+                        <td className="px-5 py-4">{roleLabel(user.role)}</td>
 
-                          <td className="px-5 py-4">
-                            {user.active ? (
-                              <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
-                                Aktif
-                              </span>
-                            ) : (
-                              <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-500">
-                                Nonaktif
-                              </span>
-                            )}
-                          </td>
+                        <td className="px-5 py-4">
+                          {user.active ? (
+                            <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+                              Aktif
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-500">
+                              Nonaktif
+                            </span>
+                          )}
+                        </td>
 
-                          <td className="px-5 py-4">
+                        <td className="px-5 py-4">
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              href={`/admin/users/${user.id}/edit`}
+                              className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700"
+                            >
+                              Edit
+                            </Link>
+
                             <UserStatusButton
-                              userId={
-                                user.id
-                              }
-                              active={
-                                user.active
-                              }
-                              isCurrentUser={
-                                user.id ===
-                                currentUser.id
-                              }
+                              userId={user.id}
+                              active={user.active}
+                              isCurrentUser={user.id === currentUser.id}
                             />
-                          </td>
-                        </tr>
-                      ),
-                    )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

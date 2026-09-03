@@ -45,9 +45,7 @@ export async function PATCH(
     );
   }
 
-  if (
-    actor.role !== "ADMIN"
-  ) {
+  if (actor.role !== "ADMIN") {
     return NextResponse.json(
       {
         error:
@@ -80,8 +78,9 @@ export async function PATCH(
   }
 
   const parsed =
-    updateAdminUserSchema
-      .safeParse(body);
+    updateAdminUserSchema.safeParse(
+      body,
+    );
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -98,99 +97,6 @@ export async function PATCH(
     );
   }
 
-  const existing =
-    await prisma.user.findUnique({
-      where: {
-        id,
-      },
-
-      select: {
-        id: true,
-
-        email: true,
-
-        username: true,
-
-        role: true,
-
-        active: true,
-      },
-    });
-
-  if (!existing) {
-    return NextResponse.json(
-      {
-        error:
-          "User tidak ditemukan.",
-      },
-      {
-        status: 404,
-      },
-    );
-  }
-
-  const nextActive =
-    parsed.data.active ??
-    existing.active;
-
-  const nextRole =
-    parsed.data.role ??
-    existing.role;
-
-  /*
-   * Admin tidak boleh
-   * menonaktifkan dirinya sendiri.
-   */
-  if (
-    actor.id === existing.id &&
-    nextActive === false
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          "Anda tidak dapat menonaktifkan akun sendiri.",
-      },
-      {
-        status: 409,
-      },
-    );
-  }
-
-  /*
-   * Jangan sampai kehilangan
-   * seluruh ADMIN aktif.
-   */
-  if (
-    existing.role === "ADMIN" &&
-    existing.active &&
-    (
-      nextRole !== "ADMIN" ||
-      !nextActive
-    )
-  ) {
-    const activeAdmins =
-      await prisma.user.count({
-        where: {
-          role: "ADMIN",
-          active: true,
-        },
-      });
-
-    if (
-      activeAdmins <= 1
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Admin terakhir tidak dapat dinonaktifkan atau diubah menjadi Leader.",
-        },
-        {
-          status: 409,
-        },
-      );
-    }
-  }
-
   const passwordHash =
     parsed.data.password
       ? await bcrypt.hash(
@@ -203,6 +109,99 @@ export async function PATCH(
     const result =
       await prisma.$transaction(
         async (tx) => {
+          const existing =
+            await tx.user.findUnique({
+              where: {
+                id,
+              },
+
+              select: {
+                id: true,
+                email: true,
+                username: true,
+                role: true,
+                active: true,
+              },
+            });
+
+          if (!existing) {
+            throw new Error(
+              "USER_NOT_FOUND",
+            );
+          }
+
+          /*
+           * Endpoint ini hanya
+           * mengelola ADMIN/LEADER.
+           */
+          if (
+            existing.role !==
+              "ADMIN" &&
+            existing.role !==
+              "LEADER"
+          ) {
+            throw new Error(
+              "USER_NOT_MANAGEABLE",
+            );
+          }
+
+          const nextActive =
+            parsed.data.active ??
+            existing.active;
+
+          const nextRole =
+            parsed.data.role ??
+            existing.role;
+
+          if (
+            actor.id ===
+              existing.id &&
+            !nextActive
+          ) {
+            throw new Error(
+              "SELF_DEACTIVATE",
+            );
+          }
+
+          /*
+           * Proteksi admin terakhir
+           * ada DI DALAM transaksi.
+           */
+          if (
+            existing.role ===
+              "ADMIN" &&
+            existing.active &&
+            (
+              nextRole !==
+                "ADMIN" ||
+              !nextActive
+            )
+          ) {
+            const activeAdmins =
+              await tx.user.count({
+                where: {
+                  role: "ADMIN",
+                  active: true,
+                },
+              });
+
+            if (
+              activeAdmins <= 1
+            ) {
+              throw new Error(
+                "LAST_ADMIN",
+              );
+            }
+          }
+
+          const roleChanged =
+            nextRole !==
+            existing.role;
+
+          const activeChanged =
+            nextActive !==
+            existing.active;
+
           const updated =
             await tx.user.update({
               where: {
@@ -225,8 +224,7 @@ export async function PATCH(
                 undefined
                   ? {
                       username:
-                        parsed.data.username ??
-                        null,
+                        parsed.data.username,
                     }
                   : {}),
 
@@ -251,6 +249,17 @@ export async function PATCH(
                 ...(passwordHash
                   ? {
                       passwordHash,
+
+                      /*
+                       * Login sekarang
+                       * memilih pinHash
+                       * sebelum passwordHash.
+                       *
+                       * Reset password harus
+                       * membuang PIN lama.
+                       */
+                      pinHash:
+                        null,
                     }
                   : {}),
               },
@@ -265,16 +274,16 @@ export async function PATCH(
             });
 
           /*
-           * Cabut session jika:
-           * - password diganti
-           * - role diganti
-           * - user dinonaktifkan
+           * Cabut sesi hanya jika
+           * memang diperlukan.
            */
           if (
             passwordHash ||
-            parsed.data.role !==
-              undefined ||
-            nextActive === false
+            roleChanged ||
+            (
+              activeChanged &&
+              !nextActive
+            )
           ) {
             await tx.session.deleteMany({
               where: {
@@ -349,6 +358,12 @@ export async function PATCH(
 
           return updated;
         },
+        {
+          isolationLevel:
+            Prisma
+              .TransactionIsolationLevel
+              .Serializable,
+        },
       );
 
     return NextResponse.json({
@@ -364,20 +379,81 @@ export async function PATCH(
   } catch (error) {
     console.error(error);
 
+    if (error instanceof Error) {
+      switch (error.message) {
+        case "USER_NOT_FOUND":
+          return NextResponse.json(
+            {
+              error:
+                "User tidak ditemukan.",
+            },
+            {
+              status: 404,
+            },
+          );
+
+        case "USER_NOT_MANAGEABLE":
+          return NextResponse.json(
+            {
+              error:
+                "User ini tidak dapat dikelola dari menu User.",
+            },
+            {
+              status: 403,
+            },
+          );
+
+        case "SELF_DEACTIVATE":
+          return NextResponse.json(
+            {
+              error:
+                "Anda tidak dapat menonaktifkan akun sendiri.",
+            },
+            {
+              status: 409,
+            },
+          );
+
+        case "LAST_ADMIN":
+          return NextResponse.json(
+            {
+              error:
+                "Admin terakhir tidak dapat dinonaktifkan atau diubah menjadi Leader.",
+            },
+            {
+              status: 409,
+            },
+          );
+      }
+    }
+
     if (
       error instanceof
-        Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
+        Prisma.PrismaClientKnownRequestError
     ) {
-      return NextResponse.json(
-        {
-          error:
-            "Email atau username sudah digunakan.",
-        },
-        {
-          status: 409,
-        },
-      );
+      if (error.code === "P2002") {
+        return NextResponse.json(
+          {
+            error:
+              "Email atau username sudah digunakan.",
+          },
+          {
+            status: 409,
+          },
+        );
+      }
+
+      if (error.code === "P2034") {
+        return NextResponse.json(
+          {
+            error:
+              "Data user berubah bersamaan. Silakan coba kembali.",
+          },
+          {
+            status: 409,
+          },
+        );
+      }
     }
 
     return NextResponse.json(
