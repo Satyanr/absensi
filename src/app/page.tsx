@@ -52,88 +52,36 @@ type Attendance = {
   checkOutStatus: string | null;
 };
 
-type ReverseGeocodeResult = {
-  locality?: string;
-  city?: string;
-  principalSubdivision?: string;
-  countryName?: string;
-  postcode?: string;
-
-  localityInfo?: {
-    informative?: Array<{
-      name?: string;
-    }>;
-  };
-};
-
 async function resolveLocationName(latitude: number, longitude: number) {
   try {
-    const params = new URLSearchParams({
-      latitude: String(latitude),
-      longitude: String(longitude),
-      localityLanguage: "default",
-    });
+    const response = await fetch("/api/attendance/reverse-geocode", {
+      method: "POST",
 
-    const response = await fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?${params.toString()}`,
-    );
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify({
+        latitude,
+        longitude,
+      }),
+    });
 
     if (!response.ok) {
       return null;
     }
 
-    const data = (await response.json()) as ReverseGeocodeResult;
+    const data = await response.json();
 
-    const parts: string[] = [];
-
-    function addPart(value: string | undefined) {
-      const clean = value?.trim();
-
-      if (!clean) {
-        return;
-      }
-
-      const alreadyExists = parts.some(
-        (item) => item.toLowerCase() === clean.toLowerCase(),
-      );
-
-      if (!alreadyExists) {
-        parts.push(clean);
-      }
-    }
-
-    /*
-     * informative biasanya bisa
-     * berisi nama kawasan / area
-     * yang lebih spesifik.
-     */
-    const informative = data.localityInfo?.informative ?? [];
-
-    const mostSpecific = [...informative]
-      .reverse()
-      .find((item) => item.name?.trim())?.name;
-
-    addPart(mostSpecific);
-    addPart(data.locality);
-    addPart(data.city);
-    addPart(data.principalSubdivision);
-
-    /*
-     * Indonesia boleh tetap ditulis
-     * supaya laporan historis jelas.
-     */
-    addPart(data.countryName);
-
-    return parts.length ? parts.join(", ") : null;
+    return typeof data.address === "string" ? data.address : null;
   } catch {
     /*
-     * Geocoder gagal tidak boleh
-     * menggagalkan absensi.
+     * Nama alamat gagal
+     * tidak menggagalkan GPS.
      */
     return null;
   }
 }
-
 export default function HomePage() {
   const [employeeCode, setEmployeeCode] = useState("");
 
