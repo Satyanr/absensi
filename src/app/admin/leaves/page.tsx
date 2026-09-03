@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import LeaveReviewActions from "@/components/admin/LeaveReviewActions";
 import LeaveBalanceForm from "@/components/admin/LeaveBalanceForm";
+import LeaveAdjustmentForm from "@/components/admin/LeaveAdjustmentForm";
 
 function formatDate(value: Date) {
   return new Intl.DateTimeFormat("id-ID", {
@@ -375,6 +376,16 @@ export default async function LeavesPage({ searchParams }: Props) {
                         </div>
                       </div>
                     )}
+
+                    {item.type === "ANNUAL_LEAVE" &&
+                      item.status === "APPROVED" && (
+                        <LeaveAdjustmentForm
+                          leaveRequestId={item.id}
+                          employeeName={item.employee.name}
+                          startDate={item.startDate.toISOString().slice(0, 10)}
+                          endDate={item.endDate.toISOString().slice(0, 10)}
+                        />
+                      )}
 
                     {item.status === "PENDING" && (
                       <LeaveReviewActions
