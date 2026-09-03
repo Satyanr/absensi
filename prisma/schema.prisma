@@ -79,6 +79,24 @@ enum AttendanceMode {
   PROJECT
 }
 
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+}
+
+enum NotificationType {
+  LEAVE_SUBMITTED
+  LEAVE_APPROVED
+  LEAVE_REJECTED
+  TEST_EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model Employee {
   id            String    @id @default(cuid())
   employeeCode  String    @unique @map("employee_code")
@@ -310,4 +328,32 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorId, createdAt])
   @@map("audit_logs")
+}
+
+model NotificationLog {
+  id            String             @id @default(cuid())
+  channel       NotificationChannel
+  type          NotificationType
+  status        NotificationStatus @default(PENDING)
+
+  recipient     String
+  subject       String?
+
+  entityType    String?            @map("entity_type")
+  entityId      String?            @map("entity_id")
+
+  attempts      Int                @default(0)
+  sentAt        DateTime?          @map("sent_at")
+  lastAttemptAt DateTime?          @map("last_attempt_at")
+  lastError     String?            @map("last_error")
+
+  metadata      Json?
+
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([entityType, entityId])
+  @@index([recipient, createdAt])
+  @@map("notification_logs")
 }

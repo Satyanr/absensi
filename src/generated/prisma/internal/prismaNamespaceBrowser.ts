@@ -61,7 +61,8 @@ export const ModelName = {
   Attachment: 'Attachment',
   LeaveRequest: 'LeaveRequest',
   LeaveBalance: 'LeaveBalance',
-  AuditLog: 'AuditLog'
+  AuditLog: 'AuditLog',
+  NotificationLog: 'NotificationLog'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -274,6 +275,27 @@ export const AuditLogScalarFieldEnum = {
 } as const
 
 export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
+
+
+export const NotificationLogScalarFieldEnum = {
+  id: 'id',
+  channel: 'channel',
+  type: 'type',
+  status: 'status',
+  recipient: 'recipient',
+  subject: 'subject',
+  entityType: 'entityType',
+  entityId: 'entityId',
+  attempts: 'attempts',
+  sentAt: 'sentAt',
+  lastAttemptAt: 'lastAttemptAt',
+  lastError: 'lastError',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type NotificationLogScalarFieldEnum = (typeof NotificationLogScalarFieldEnum)[keyof typeof NotificationLogScalarFieldEnum]
 
 
 export const SortOrder = {

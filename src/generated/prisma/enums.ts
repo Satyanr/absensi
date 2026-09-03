@@ -109,3 +109,30 @@ export const AttendanceMode = {
 } as const
 
 export type AttendanceMode = (typeof AttendanceMode)[keyof typeof AttendanceMode]
+
+
+export const NotificationChannel = {
+  EMAIL: 'EMAIL',
+  WHATSAPP: 'WHATSAPP'
+} as const
+
+export type NotificationChannel = (typeof NotificationChannel)[keyof typeof NotificationChannel]
+
+
+export const NotificationType = {
+  LEAVE_SUBMITTED: 'LEAVE_SUBMITTED',
+  LEAVE_APPROVED: 'LEAVE_APPROVED',
+  LEAVE_REJECTED: 'LEAVE_REJECTED',
+  TEST_EMAIL: 'TEST_EMAIL'
+} as const
+
+export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]
+
+
+export const NotificationStatus = {
+  PENDING: 'PENDING',
+  SENT: 'SENT',
+  FAILED: 'FAILED'
+} as const
+
+export type NotificationStatus = (typeof NotificationStatus)[keyof typeof NotificationStatus]

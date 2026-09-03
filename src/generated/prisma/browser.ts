@@ -72,3 +72,8 @@ export type LeaveBalance = Prisma.LeaveBalanceModel
  * 
  */
 export type AuditLog = Prisma.AuditLogModel
+/**
+ * Model NotificationLog
+ * 
+ */
+export type NotificationLog = Prisma.NotificationLogModel

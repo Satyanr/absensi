@@ -481,6 +481,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       (user.role === "ADMIN" ? "Admin" : "Leader");
 
     await notifyLeaveDecision({
+      leaveRequestId: existing.id,
+
       employeeEmail: existing.employee.email,
 
       employeeCode: existing.employee.employeeCode,

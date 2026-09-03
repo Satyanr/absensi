@@ -1,19 +1,14 @@
-import {
-  NextResponse,
-} from "next/server";
+import { NextResponse } from "next/server";
 
-import {
-  getCurrentUser,
-} from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
 
 import {
   getSmtpStatus,
-  sendMailBestEffort,
+  sendTrackedMailBestEffort,
 } from "@/lib/notification/mailer";
 
 export async function POST() {
-  const user =
-    await getCurrentUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     return NextResponse.json(
@@ -32,8 +27,7 @@ export async function POST() {
   if (user.role !== "ADMIN") {
     return NextResponse.json(
       {
-        error:
-          "Hanya Admin yang dapat menguji email.",
+        error: "Hanya Admin yang dapat menguji email.",
       },
       {
         status: 403,
@@ -41,14 +35,12 @@ export async function POST() {
     );
   }
 
-  const email =
-    user.email?.trim();
+  const email = user.email?.trim();
 
   if (!email) {
     return NextResponse.json(
       {
-        error:
-          "Akun Admin yang sedang digunakan belum memiliki email.",
+        error: "Akun Admin yang sedang digunakan belum memiliki email.",
       },
       {
         status: 409,
@@ -56,14 +48,12 @@ export async function POST() {
     );
   }
 
-  const smtp =
-    getSmtpStatus();
+  const smtp = getSmtpStatus();
 
   if (!smtp.configured) {
     return NextResponse.json(
       {
-        error:
-          "SMTP belum dikonfigurasi dengan lengkap.",
+        error: "SMTP belum dikonfigurasi dengan lengkap.",
       },
       {
         status: 503,
@@ -71,23 +61,21 @@ export async function POST() {
     );
   }
 
-  const sent =
-    await sendMailBestEffort({
-      to: email,
+  const sent = await sendTrackedMailBestEffort({
+    to: email,
 
-      subject:
-        "[Absensi] Test Notifikasi Email",
+    subject: "[Absensi] Test Notifikasi Email",
 
-      text: [
-        "Email test Sistem Absensi berhasil dikirim.",
-        "",
-        `Penerima: ${email}`,
-        `Waktu: ${new Date().toISOString()}`,
-        "",
-        "Jika Anda menerima email ini, konfigurasi SMTP sudah berfungsi.",
-      ].join("\n"),
+    text: [
+      "Email test Sistem Absensi berhasil dikirim.",
+      "",
+      `Penerima: ${email}`,
+      `Waktu: ${new Date().toISOString()}`,
+      "",
+      "Jika Anda menerima email ini, konfigurasi SMTP sudah berfungsi.",
+    ].join("\n"),
 
-      html: `
+    html: `
         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#222">
           <h2>Test Notifikasi Email</h2>
 
@@ -123,7 +111,17 @@ export async function POST() {
           </p>
         </div>
       `,
-    });
+
+    notificationType: "TEST_EMAIL",
+
+    entityType: "User",
+
+    entityId: user.id,
+
+    metadata: {
+      source: "ADMIN_SMTP_TEST",
+    },
+  });
 
   if (!sent) {
     return NextResponse.json(
@@ -140,7 +138,6 @@ export async function POST() {
   return NextResponse.json({
     ok: true,
 
-    message:
-      `Email test berhasil dikirim ke ${email}.`,
+    message: `Email test berhasil dikirim ke ${email}.`,
   });
 }

@@ -1,19 +1,10 @@
-import {
-  prisma,
-} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
-import {
-  sendMailBestEffort,
-} from "@/lib/notification/mailer";
+import { sendTrackedMailBestEffort } from "@/lib/notification/mailer";
 
-type LeaveType =
-  | "PERMISSION"
-  | "SICK"
-  | "ANNUAL_LEAVE";
+type LeaveType = "PERMISSION" | "SICK" | "ANNUAL_LEAVE";
 
-function leaveTypeLabel(
-  type: LeaveType,
-) {
+function leaveTypeLabel(type: LeaveType) {
   switch (type) {
     case "PERMISSION":
       return "Izin";
@@ -26,57 +17,29 @@ function leaveTypeLabel(
   }
 }
 
-function formatDate(
-  value: Date,
-) {
-  return new Intl.DateTimeFormat(
-    "id-ID",
-    {
-      timeZone: "UTC",
+function formatDate(value: Date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: "UTC",
 
-      day: "2-digit",
+    day: "2-digit",
 
-      month: "long",
+    month: "long",
 
-      year: "numeric",
-    },
-  ).format(value);
+    year: "numeric",
+  }).format(value);
 }
 
-function escapeHtml(
-  value: string,
-) {
+function escapeHtml(value: string) {
   return value
-    .replace(
-      /&/g,
-      "&amp;",
-    )
-    .replace(
-      /</g,
-      "&lt;",
-    )
-    .replace(
-      />/g,
-      "&gt;",
-    )
-    .replace(
-      /"/g,
-      "&quot;",
-    )
-    .replace(
-      /'/g,
-      "&#039;",
-    );
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function getAdminLeaveUrl() {
-  const baseUrl =
-    process.env.APP_URL
-      ?.trim()
-      .replace(
-        /\/+$/,
-        "",
-      );
+  const baseUrl = process.env.APP_URL?.trim().replace(/\/+$/, "");
 
   if (!baseUrl) {
     return null;
@@ -101,53 +64,36 @@ type NewLeaveInput = {
   reason: string;
 };
 
-export async function notifyNewLeaveRequest(
-  input: NewLeaveInput,
-) {
+export async function notifyNewLeaveRequest(input: NewLeaveInput) {
   /*
    * Seluruh fungsi dijaga agar
    * tidak pernah melempar error
    * ke workflow pengajuan.
    */
   try {
-    const users =
-      await prisma.user.findMany({
-        where: {
-          active: true,
+    const users = await prisma.user.findMany({
+      where: {
+        active: true,
 
-          role: {
-            in: [
-              "ADMIN",
-              "LEADER",
-            ],
-          },
-
-          email: {
-            not: null,
-          },
+        role: {
+          in: ["ADMIN", "LEADER"],
         },
 
-        select: {
-          email: true,
+        email: {
+          not: null,
         },
-      });
+      },
 
-    const recipients =
-      users
-        .map(
-          (user) =>
-            user.email?.trim(),
-        )
-        .filter(
-          (
-            email,
-          ): email is string =>
-            Boolean(email),
-        );
+      select: {
+        email: true,
+      },
+    });
 
-    if (
-      recipients.length === 0
-    ) {
+    const recipients = users
+      .map((user) => user.email?.trim())
+      .filter((email): email is string => Boolean(email));
+
+    if (recipients.length === 0) {
       console.warn(
         "Tidak ada Admin/Leader aktif dengan email untuk menerima notifikasi pengajuan.",
       );
@@ -155,26 +101,15 @@ export async function notifyNewLeaveRequest(
       return;
     }
 
-    const leaveLabel =
-      leaveTypeLabel(
-        input.type,
-      );
+    const leaveLabel = leaveTypeLabel(input.type);
 
-    const start =
-      formatDate(
-        input.startDate,
-      );
+    const start = formatDate(input.startDate);
 
-    const end =
-      formatDate(
-        input.endDate,
-      );
+    const end = formatDate(input.endDate);
 
-    const adminUrl =
-      getAdminLeaveUrl();
+    const adminUrl = getAdminLeaveUrl();
 
-    const subject =
-      `[Absensi] Pengajuan ${leaveLabel} Baru - ${input.employeeName}`;
+    const subject = `[Absensi] Pengajuan ${leaveLabel} Baru - ${input.employeeName}`;
 
     const text = [
       `Ada pengajuan ${leaveLabel} baru yang menunggu persetujuan.`,
@@ -186,34 +121,18 @@ export async function notifyNewLeaveRequest(
       `Alasan: ${input.reason}`,
       `Status: Menunggu Persetujuan`,
       "",
-      ...(adminUrl
-        ? [
-            `Buka daftar pengajuan: ${adminUrl}`,
-          ]
-        : []),
+      ...(adminUrl ? [`Buka daftar pengajuan: ${adminUrl}`] : []),
       "",
       `ID Pengajuan: ${input.leaveRequestId}`,
     ].join("\n");
 
-    const safeName =
-      escapeHtml(
-        input.employeeName,
-      );
+    const safeName = escapeHtml(input.employeeName);
 
-    const safeCode =
-      escapeHtml(
-        input.employeeCode,
-      );
+    const safeCode = escapeHtml(input.employeeCode);
 
-    const safeReason =
-      escapeHtml(
-        input.reason,
-      );
+    const safeReason = escapeHtml(input.reason);
 
-    const safeLeaveLabel =
-      escapeHtml(
-        leaveLabel,
-      );
+    const safeLeaveLabel = escapeHtml(leaveLabel);
 
     const html = `
       <div style="font-family:Arial,sans-serif;line-height:1.6;color:#222">
@@ -277,65 +196,61 @@ export async function notifyNewLeaveRequest(
      * Admin/Leader tidak saling terlihat.
      */
     await Promise.all(
-      recipients.map(
-        (email) =>
-          sendMailBestEffort({
-            to:
-              email,
+      recipients.map((email) =>
+        sendTrackedMailBestEffort({
+          to: email,
 
-            subject,
+          subject,
 
-            text,
+          text,
 
-            html,
-          }),
+          html,
+
+          notificationType: "LEAVE_SUBMITTED",
+
+          entityType: "LeaveRequest",
+
+          entityId: input.leaveRequestId,
+
+          metadata: {
+            employeeCode: input.employeeCode,
+
+            leaveType: input.type,
+          },
+        }),
       ),
     );
   } catch (error) {
-    console.error(
-      "Notifikasi pengajuan baru gagal:",
-      error,
-    );
+    console.error("Notifikasi pengajuan baru gagal:", error);
   }
 }
 
 type DecisionInput = {
-  employeeEmail:
-    string | null;
+  employeeEmail: string | null;
 
-  employeeCode:
-    string;
+  employeeCode: string;
 
-  employeeName:
-    string;
+  employeeName: string;
 
-  type:
-    LeaveType;
+  type: LeaveType;
 
-  startDate:
-    Date;
+  startDate: Date;
 
-  endDate:
-    Date;
+  endDate: Date;
 
-  reason:
-    string;
+  reason: string;
 
-  status:
-    | "APPROVED"
-    | "REJECTED";
+  status: "APPROVED" | "REJECTED";
 
-  reviewerName:
-    string;
+  reviewerName: string;
+
+  leaveRequestId:
+  string;
 };
 
-export async function notifyLeaveDecision(
-  input: DecisionInput,
-) {
+export async function notifyLeaveDecision(input: DecisionInput) {
   try {
-    const email =
-      input.employeeEmail
-        ?.trim();
+    const email = input.employeeEmail?.trim();
 
     if (!email) {
       console.warn(
@@ -345,32 +260,17 @@ export async function notifyLeaveDecision(
       return;
     }
 
-    const leaveLabel =
-      leaveTypeLabel(
-        input.type,
-      );
+    const leaveLabel = leaveTypeLabel(input.type);
 
-    const approved =
-      input.status ===
-      "APPROVED";
+    const approved = input.status === "APPROVED";
 
-    const statusLabel =
-      approved
-        ? "Disetujui"
-        : "Ditolak";
+    const statusLabel = approved ? "Disetujui" : "Ditolak";
 
-    const start =
-      formatDate(
-        input.startDate,
-      );
+    const start = formatDate(input.startDate);
 
-    const end =
-      formatDate(
-        input.endDate,
-      );
+    const end = formatDate(input.endDate);
 
-    const subject =
-      `[Absensi] Pengajuan ${leaveLabel} ${statusLabel}`;
+    const subject = `[Absensi] Pengajuan ${leaveLabel} ${statusLabel}`;
 
     const text = [
       `Halo ${input.employeeName},`,
@@ -429,20 +329,40 @@ export async function notifyLeaveDecision(
       </div>
     `;
 
-    await sendMailBestEffort({
-      to:
-        email,
+    await sendTrackedMailBestEffort({
+  to:
+    email,
 
-      subject,
+  subject,
 
-      text,
+  text,
 
-      html,
-    });
+  html,
+
+  notificationType:
+    input.status ===
+    "APPROVED"
+      ? "LEAVE_APPROVED"
+      : "LEAVE_REJECTED",
+
+  entityType:
+    "LeaveRequest",
+
+  entityId:
+    input.leaveRequestId,
+
+  metadata: {
+    employeeCode:
+      input.employeeCode,
+
+    leaveType:
+      input.type,
+
+    leaveStatus:
+      input.status,
+  },
+});
   } catch (error) {
-    console.error(
-      "Notifikasi hasil pengajuan gagal:",
-      error,
-    );
+    console.error("Notifikasi hasil pengajuan gagal:", error);
   }
 }
