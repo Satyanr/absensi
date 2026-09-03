@@ -57,6 +57,8 @@ export async function POST(request: NextRequest) {
 
     clientCapturedAt: form.get("clientCapturedAt"),
 
+    address: form.get("address"),
+
     source: form.get("source"),
   });
 
@@ -352,6 +354,8 @@ export async function POST(request: NextRequest) {
           locationAccuracy: parsed.data.accuracy,
 
           locationCapturedAt: new Date(parsed.data.locationCapturedAt),
+
+          address: parsed.data.address ?? null,
 
           photoId: attachment.id,
 

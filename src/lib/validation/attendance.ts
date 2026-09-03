@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-const attendanceSourceSchema = z.enum([
-  "WEB_CAMERA",
-  "WEB_FILE_CAPTURE",
-]);
+const attendanceSourceSchema = z.enum(["WEB_CAMERA", "WEB_FILE_CAPTURE"]);
 
 const attendanceModeSchema = z.preprocess(
   (value) => {
@@ -18,53 +15,33 @@ const attendanceModeSchema = z.preprocess(
 
     return value;
   },
-  z.enum(["OFFICE", "PROJECT"])
+  z.enum(["OFFICE", "PROJECT"]),
 );
 
 const optionalLatitude = z.preprocess(
-  (value) =>
-    value === null || value === ""
-      ? undefined
-      : value,
-  z.coerce
-    .number()
-    .min(-90)
-    .max(90)
-    .optional()
+  (value) => (value === null || value === "" ? undefined : value),
+  z.coerce.number().min(-90).max(90).optional(),
 );
 
 const optionalLongitude = z.preprocess(
-  (value) =>
-    value === null || value === ""
-      ? undefined
-      : value,
-  z.coerce
-    .number()
-    .min(-180)
-    .max(180)
-    .optional()
+  (value) => (value === null || value === "" ? undefined : value),
+  z.coerce.number().min(-180).max(180).optional(),
 );
 
 const optionalAccuracy = z.preprocess(
-  (value) =>
-    value === null || value === ""
-      ? undefined
-      : value,
-  z.coerce
-    .number()
-    .min(0)
-    .max(10000)
-    .optional()
+  (value) => (value === null || value === "" ? undefined : value),
+  z.coerce.number().min(0).max(10000).optional(),
 );
 
 const optionalDateTime = z.preprocess(
-  (value) =>
-    value === null || value === ""
-      ? undefined
-      : value,
-  z.string()
-    .datetime()
-    .optional()
+  (value) => (value === null || value === "" ? undefined : value),
+  z.string().datetime().optional(),
+);
+
+const optionalAddress = z.preprocess(
+  (value) => (value === null || value === "" ? undefined : value),
+
+  z.string().trim().max(500).optional(),
 );
 
 /*
@@ -82,33 +59,23 @@ const optionalDateTime = z.preprocess(
  */
 export const checkInSchema = z
   .object({
-    employeeCode: z
-      .string()
-      .trim()
-      .min(1)
-      .max(50),
+    employeeCode: z.string().trim().min(1).max(50),
 
-    attendanceMode:
-      attendanceModeSchema,
+    attendanceMode: attendanceModeSchema,
 
-    latitude:
-      optionalLatitude,
+    latitude: optionalLatitude,
 
-    longitude:
-      optionalLongitude,
+    longitude: optionalLongitude,
 
-    accuracy:
-      optionalAccuracy,
+    accuracy: optionalAccuracy,
 
-    locationCapturedAt:
-      optionalDateTime,
+    locationCapturedAt: optionalDateTime,
 
-    clientCapturedAt: z
-      .string()
-      .datetime(),
+    address: optionalAddress,
 
-    source:
-      attendanceSourceSchema,
+    clientCapturedAt: z.string().datetime(),
+
+    source: attendanceSourceSchema,
   })
   .superRefine((data, ctx) => {
     /*
@@ -122,8 +89,7 @@ export const checkInSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["latitude"],
-        message:
-          "Lokasi wajib untuk absensi kantor.",
+        message: "Lokasi wajib untuk absensi kantor.",
       });
     }
 
@@ -131,8 +97,7 @@ export const checkInSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["longitude"],
-        message:
-          "Lokasi wajib untuk absensi kantor.",
+        message: "Lokasi wajib untuk absensi kantor.",
       });
     }
 
@@ -140,8 +105,7 @@ export const checkInSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["accuracy"],
-        message:
-          "Akurasi lokasi wajib untuk absensi kantor.",
+        message: "Akurasi lokasi wajib untuk absensi kantor.",
       });
     }
 
@@ -149,8 +113,7 @@ export const checkInSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["locationCapturedAt"],
-        message:
-          "Waktu pengambilan lokasi wajib.",
+        message: "Waktu pengambilan lokasi wajib.",
       });
     }
   });
@@ -161,35 +124,19 @@ export const checkInSchema = z
  * GPS tetap wajib.
  */
 export const checkOutSchema = z.object({
-  employeeCode: z
-    .string()
-    .trim()
-    .min(1)
-    .max(50),
+  employeeCode: z.string().trim().min(1).max(50),
 
-  latitude: z.coerce
-    .number()
-    .min(-90)
-    .max(90),
+  latitude: z.coerce.number().min(-90).max(90),
 
-  longitude: z.coerce
-    .number()
-    .min(-180)
-    .max(180),
+  longitude: z.coerce.number().min(-180).max(180),
 
-  accuracy: z.coerce
-    .number()
-    .min(0)
-    .max(10000),
+  accuracy: z.coerce.number().min(0).max(10000),
 
-  locationCapturedAt: z
-    .string()
-    .datetime(),
+  locationCapturedAt: z.string().datetime(),
 
-  clientCapturedAt: z
-    .string()
-    .datetime(),
+  address: optionalAddress,
 
-  source:
-    attendanceSourceSchema,
+  clientCapturedAt: z.string().datetime(),
+
+  source: attendanceSourceSchema,
 });

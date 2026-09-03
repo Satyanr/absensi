@@ -116,17 +116,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (parsed.data.type === "ANNUAL_LEAVE" && !employee.leaveEligible) {
-    return NextResponse.json(
-      {
-        error: "Karyawan ini tidak memiliki hak cuti.",
-      },
-      {
-        status: 409,
-      },
-    );
-  }
-
   const startDate = new Date(`${parsed.data.startDate}T00:00:00.000Z`);
 
   const endDate = new Date(`${parsed.data.endDate}T00:00:00.000Z`);

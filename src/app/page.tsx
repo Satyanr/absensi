@@ -19,6 +19,7 @@ type LocationData = {
   longitude: number;
   accuracy: number;
   capturedAt: string;
+  address: string | null;
 };
 
 type Attendance = {
@@ -35,6 +36,88 @@ type Attendance = {
 
   checkOutStatus: string | null;
 };
+
+type ReverseGeocodeResult = {
+  locality?: string;
+  city?: string;
+  principalSubdivision?: string;
+  countryName?: string;
+  postcode?: string;
+
+  localityInfo?: {
+    informative?: Array<{
+      name?: string;
+    }>;
+  };
+};
+
+async function resolveLocationName(latitude: number, longitude: number) {
+  try {
+    const params = new URLSearchParams({
+      latitude: String(latitude),
+      longitude: String(longitude),
+      localityLanguage: "default",
+    });
+
+    const response = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?${params.toString()}`,
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = (await response.json()) as ReverseGeocodeResult;
+
+    const parts: string[] = [];
+
+    function addPart(value: string | undefined) {
+      const clean = value?.trim();
+
+      if (!clean) {
+        return;
+      }
+
+      const alreadyExists = parts.some(
+        (item) => item.toLowerCase() === clean.toLowerCase(),
+      );
+
+      if (!alreadyExists) {
+        parts.push(clean);
+      }
+    }
+
+    /*
+     * informative biasanya bisa
+     * berisi nama kawasan / area
+     * yang lebih spesifik.
+     */
+    const informative = data.localityInfo?.informative ?? [];
+
+    const mostSpecific = [...informative]
+      .reverse()
+      .find((item) => item.name?.trim())?.name;
+
+    addPart(mostSpecific);
+    addPart(data.locality);
+    addPart(data.city);
+    addPart(data.principalSubdivision);
+
+    /*
+     * Indonesia boleh tetap ditulis
+     * supaya laporan historis jelas.
+     */
+    addPart(data.countryName);
+
+    return parts.length ? parts.join(", ") : null;
+  } catch {
+    /*
+     * Geocoder gagal tidak boleh
+     * menggagalkan absensi.
+     */
+    return null;
+  }
+}
 
 export default function HomePage() {
   const [employeeCode, setEmployeeCode] = useState("");
@@ -160,15 +243,22 @@ export default function HomePage() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
+      async (position) => {
+        const latitude = position.coords.latitude;
 
-          longitude: position.coords.longitude,
+        const longitude = position.coords.longitude;
+
+        const address = await resolveLocationName(latitude, longitude);
+
+        setLocation({
+          latitude,
+          longitude,
 
           accuracy: position.coords.accuracy,
 
           capturedAt: new Date().toISOString(),
+
+          address,
         });
 
         setLocationLoading(false);
@@ -253,6 +343,10 @@ export default function HomePage() {
         form.append("accuracy", String(location.accuracy));
 
         form.append("locationCapturedAt", location.capturedAt);
+
+        if (location.address) {
+          form.append("address", location.address);
+        }
       }
 
       form.append("clientCapturedAt", new Date().toISOString());
@@ -326,6 +420,10 @@ export default function HomePage() {
       form.append("locationCapturedAt", location.capturedAt);
 
       form.append("clientCapturedAt", new Date().toISOString());
+
+      if (location.address) {
+        form.append("address", location.address);
+      }
 
       form.append("source", selfieSource);
 
@@ -622,12 +720,18 @@ export default function HomePage() {
                       </div>
 
                       {location && (
-                        <div className="mt-3 rounded-xl bg-neutral-50 p-3 text-xs text-neutral-600">
-                          <p>Latitude: {location.latitude}</p>
+                        <div className="mt-3 rounded-xl bg-neutral-50 p-3">
+                          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                            Lokasi Terdeteksi
+                          </p>
 
-                          <p>Longitude: {location.longitude}</p>
+                          <p className="mt-1 text-sm font-semibold text-neutral-800">
+                            {location.address ?? "Nama lokasi tidak tersedia"}
+                          </p>
 
-                          <p>Akurasi: ±{Math.round(location.accuracy)} meter</p>
+                          <p className="mt-1 text-xs text-neutral-500">
+                            Akurasi GPS ±{Math.round(location.accuracy)} meter
+                          </p>
                         </div>
                       )}
 

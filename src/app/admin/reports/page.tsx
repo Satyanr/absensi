@@ -260,6 +260,7 @@ export default async function ReportsPage({ searchParams }: Props) {
               id: true,
               eventType: true,
               photoId: true,
+              address: true,
             },
 
             orderBy: {
@@ -396,6 +397,14 @@ export default async function ReportsPage({ searchParams }: Props) {
       item.events.find(
         (event) => event.eventType === "CHECK_OUT" && event.photoId,
       )?.id ?? null,
+
+    checkInLocation:
+      item.events.find((event) => event.eventType === "CHECK_IN")?.address ??
+      null,
+
+    checkOutLocation:
+      item.events.find((event) => event.eventType === "CHECK_OUT")?.address ??
+      null,
 
     employee: item.employee,
   }));
@@ -754,12 +763,30 @@ export default async function ReportsPage({ searchParams }: Props) {
                               />
 
                               <Info
+                                label="Lokasi Masuk"
+                                value={
+                                  item.checkInLocation ??
+                                  "Nama lokasi tidak tersedia"
+                                }
+                              />
+
+                              <Info
                                 label="Status Pulang"
                                 value={getCheckOutLabel(
                                   item.attendanceMode,
                                   item.checkOutStatus,
                                 )}
                               />
+
+                              {item.attendanceMode === "OFFICE" && (
+                                <Info
+                                  label="Lokasi Pulang"
+                                  value={
+                                    item.checkOutLocation ??
+                                    "Nama lokasi tidak tersedia"
+                                  }
+                                />
+                              )}
                             </>
                           ) : (
                             <>
@@ -840,9 +867,13 @@ export default async function ReportsPage({ searchParams }: Props) {
 
                           <th className="px-5 py-4">Status Masuk</th>
 
+                          <th className="px-5 py-4">Lokasi Masuk</th>
+
                           <th className="px-5 py-4">Pulang</th>
 
                           <th className="px-5 py-4">Status Pulang</th>
+
+                          <th className="px-5 py-4">Lokasi Pulang</th>
 
                           <th className="px-5 py-4">Selfie</th>
 
@@ -890,6 +921,12 @@ export default async function ReportsPage({ searchParams }: Props) {
                                 : "Disetujui"}
                             </td>
 
+                            <td className="min-w-56 px-5 py-4">
+                              {item.source === "ATTENDANCE"
+                                ? (item.checkInLocation ?? "—")
+                                : "—"}
+                            </td>
+
                             <td className="whitespace-nowrap px-5 py-4">
                               {item.source === "ATTENDANCE"
                                 ? item.attendanceMode === "PROJECT"
@@ -904,6 +941,13 @@ export default async function ReportsPage({ searchParams }: Props) {
                                     item.attendanceMode,
                                     item.checkOutStatus,
                                   )
+                                : "—"}
+                            </td>
+
+                            <td className="min-w-56 px-5 py-4">
+                              {item.source === "ATTENDANCE" &&
+                              item.attendanceMode === "OFFICE"
+                                ? (item.checkOutLocation ?? "—")
                                 : "—"}
                             </td>
 
