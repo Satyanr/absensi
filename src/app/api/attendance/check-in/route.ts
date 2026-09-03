@@ -42,6 +42,16 @@ function getExtension(mimeType: string) {
   }
 }
 
+function getMaxAccuracy() {
+  const value = Number(process.env.MAX_OFFICE_GPS_ACCURACY_METERS ?? 500);
+
+  if (!Number.isFinite(value) || value <= 0 || value > 10000) {
+    return 500;
+  }
+
+  return value;
+}
+
 export async function POST(request: NextRequest) {
   /*
    * Ini waktu resmi absensi.
@@ -173,15 +183,7 @@ export async function POST(request: NextRequest) {
 
   const isProject = attendanceMode === AttendanceMode.PROJECT;
 
-  function getMaxAccuracy() {
-    const value = Number(process.env.MAX_OFFICE_GPS_ACCURACY_METERS ?? 500);
-
-    if (!Number.isFinite(value) || value <= 0 || value > 10000) {
-      return 500;
-    }
-
-    return value;
-  }
+  const MAX_ACCURACY = getMaxAccuracy();
 
   let geofence: {
     locationId: string;
@@ -387,8 +389,6 @@ export async function POST(request: NextRequest) {
   const checksum = crypto.createHash("sha256").update(bytes).digest("hex");
 
   const extension = getExtension(photo.type);
-
-  const MAX_ACCURACY = getMaxAccuracy();
 
   const relativeDirectory = [
     String(attendanceDate.getUTCFullYear()),

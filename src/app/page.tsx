@@ -734,18 +734,10 @@ export default function HomePage() {
                         {location && (
                           <span
                             className={`text-sm font-medium ${
-                              attendanceMode === "PROJECT" ||
-                              alreadyCheckedIn ||
-                              location.officeCheck?.allowed
-                                ? "text-green-700"
-                                : "text-red-600"
+                              locationReady ? "text-green-700" : "text-red-600"
                             }`}
                           >
-                            {attendanceMode === "PROJECT" ||
-                            alreadyCheckedIn ||
-                            location.officeCheck?.allowed
-                              ? "✓ Siap"
-                              : "Di luar area"}
+                            {locationReady ? "✓ Siap" : "Belum valid"}
                           </span>
                         )}
                       </div>
