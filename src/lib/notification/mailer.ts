@@ -1,6 +1,4 @@
-import nodemailer, {
-  type Transporter,
-} from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 
 type SendMailInput = {
   to: string | string[];
@@ -12,32 +10,22 @@ type SendMailInput = {
   html?: string;
 };
 
-let transporter:
-  Transporter | null = null;
+let transporter: Transporter | null = null;
 
-let warnedMissingConfig =
-  false;
+let warnedMissingConfig = false;
 
 function getSmtpConfig() {
-  const host =
-    process.env.SMTP_HOST?.trim();
+  const host = process.env.SMTP_HOST?.trim();
 
-  const rawPort =
-    process.env.SMTP_PORT?.trim() ??
-    "465";
+  const rawPort = process.env.SMTP_PORT?.trim() ?? "465";
 
-  const port =
-    Number(rawPort);
+  const port = Number(rawPort);
 
-  const user =
-    process.env.SMTP_USER?.trim();
+  const user = process.env.SMTP_USER?.trim();
 
-  const password =
-    process.env.SMTP_PASSWORD?.trim();
+  const password = process.env.SMTP_PASSWORD?.trim();
 
-  const fromEmail =
-    process.env.MAIL_FROM_EMAIL?.trim() ||
-    user;
+  const fromEmail = process.env.MAIL_FROM_EMAIL?.trim() || user;
 
   if (
     !host ||
@@ -49,31 +37,20 @@ function getSmtpConfig() {
     !fromEmail
   ) {
     if (!warnedMissingConfig) {
-      console.warn(
-        "SMTP belum dikonfigurasi. Notifikasi email dinonaktifkan.",
-      );
+      console.warn("SMTP belum dikonfigurasi. Notifikasi email dinonaktifkan.");
 
-      warnedMissingConfig =
-        true;
+      warnedMissingConfig = true;
     }
 
     return null;
   }
 
-  const secureValue =
-    process.env.SMTP_SECURE
-      ?.trim()
-      .toLowerCase();
+  const secureValue = process.env.SMTP_SECURE?.trim().toLowerCase();
 
   const secure =
-    secureValue === undefined
-      ? port === 465
-      : secureValue === "true";
+    secureValue === undefined ? port === 465 : secureValue === "true";
 
-  const fromName =
-    process.env.MAIL_FROM_NAME
-      ?.trim() ||
-    "Sistem Absensi";
+  const fromName = process.env.MAIL_FROM_NAME?.trim() || "Sistem Absensi";
 
   return {
     host,
@@ -86,96 +63,95 @@ function getSmtpConfig() {
   };
 }
 
+export function getSmtpStatus() {
+  const config = getSmtpConfig();
+
+  if (!config) {
+    return {
+      configured: false,
+      host: null,
+      port: null,
+      secure: null,
+      fromEmail: null,
+    };
+  }
+
+  return {
+    configured: true,
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    fromEmail: config.fromEmail,
+  };
+}
+
 function getTransporter() {
   if (transporter) {
     return transporter;
   }
 
-  const config =
-    getSmtpConfig();
+  const config = getSmtpConfig();
 
   if (!config) {
     return null;
   }
 
-  transporter =
-    nodemailer.createTransport({
-      pool: true,
+  transporter = nodemailer.createTransport({
+    pool: true,
 
-      maxConnections: 3,
+    maxConnections: 3,
 
-      host:
-        config.host,
+    host: config.host,
 
-      port:
-        config.port,
+    port: config.port,
 
-      secure:
-        config.secure,
+    secure: config.secure,
 
-      auth: {
-        user:
-          config.user,
+    auth: {
+      user: config.user,
 
-        pass:
-          config.password,
-      },
+      pass: config.password,
+    },
 
-      /*
-       * Jangan biarkan request
-       * absensi menggantung lama
-       * kalau SMTP sedang bermasalah.
-       */
-      connectionTimeout:
-        8000,
+    /*
+     * Jangan biarkan request
+     * absensi menggantung lama
+     * kalau SMTP sedang bermasalah.
+     */
+    connectionTimeout: 8000,
 
-      greetingTimeout:
-        8000,
+    greetingTimeout: 8000,
 
-      socketTimeout:
-        10000,
-    });
+    socketTimeout: 10000,
+  });
 
   return transporter;
 }
 
-export async function sendMailBestEffort(
-  input: SendMailInput,
-) {
+export async function sendMailBestEffort(input: SendMailInput) {
   try {
-    const config =
-      getSmtpConfig();
+    const config = getSmtpConfig();
 
-    const mailer =
-      getTransporter();
+    const mailer = getTransporter();
 
-    if (
-      !config ||
-      !mailer
-    ) {
+    if (!config || !mailer) {
       return false;
     }
 
     await mailer.sendMail({
       from: {
-        name:
-          config.fromName,
+        name: config.fromName,
 
-        address:
-          config.fromEmail,
+        address: config.fromEmail,
       },
 
-      to:
-        input.to,
+      to: input.to,
 
-      subject:
-        input.subject,
+      subject: input.subject,
 
-      text:
-        input.text,
+      text: input.text,
 
-      html:
-        input.html,
+      html: input.html,
     });
 
     return true;
@@ -184,10 +160,7 @@ export async function sendMailBestEffort(
      * EMAIL TIDAK BOLEH
      * MEMBATALKAN TRANSAKSI CUTI.
      */
-    console.error(
-      "Gagal mengirim email:",
-      error,
-    );
+    console.error("Gagal mengirim email:", error);
 
     return false;
   }

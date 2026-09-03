@@ -9,6 +9,10 @@ import { getCurrentUser } from "@/lib/auth/session";
 
 import { prisma } from "@/lib/prisma";
 
+import EmailNotificationTest from "@/components/admin/EmailNotificationTest";
+
+import { getSmtpStatus } from "@/lib/notification/mailer";
+
 function roleLabel(role: string) {
   switch (role) {
     case "ADMIN":
@@ -72,6 +76,7 @@ export default async function UsersPage() {
       },
     ],
   });
+  const smtp = getSmtpStatus();
 
   return (
     <main className="min-h-screen bg-neutral-100">
@@ -87,8 +92,17 @@ export default async function UsersPage() {
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[360px_1fr]">
-          <div>
+          <div className="space-y-6">
             <UserCreateForm />
+
+            <EmailNotificationTest
+              configured={smtp.configured}
+              recipientEmail={currentUser.email}
+              host={smtp.host}
+              port={smtp.port}
+              secure={smtp.secure}
+              fromEmail={smtp.fromEmail}
+            />
           </div>
 
           <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
