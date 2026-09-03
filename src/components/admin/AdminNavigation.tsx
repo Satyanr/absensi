@@ -13,6 +13,10 @@ const navigation = [
     label: "Karyawan",
   },
   {
+    href: "/admin/users",
+    label: "User",
+  },
+  {
     href: "/admin/reports",
     label: "Laporan",
   },
@@ -29,26 +33,18 @@ export default function AdminNavigation() {
     <div className="rounded-2xl bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <Link
-            href="/admin/dashboard"
-            className="text-lg font-bold"
-          >
+          <Link href="/admin/dashboard" className="text-lg font-bold">
             Absensi Admin
           </Link>
 
-          <p className="text-xs text-neutral-500">
-            Sistem Absensi Karyawan
-          </p>
+          <p className="text-xs text-neutral-500">Sistem Absensi Karyawan</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <nav className="flex flex-wrap gap-2">
             {navigation.map((item) => {
               const active =
-                pathname === item.href ||
-                pathname.startsWith(
-                  `${item.href}/`
-                );
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
 
               return (
                 <Link
@@ -66,10 +62,7 @@ export default function AdminNavigation() {
             })}
           </nav>
 
-          <form
-            action="/api/auth/logout"
-            method="post"
-          >
+          <form action="/api/auth/logout" method="post">
             <button
               type="submit"
               className="rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium"
