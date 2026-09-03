@@ -2,6 +2,10 @@ import crypto from "node:crypto";
 import path from "node:path";
 
 import { mkdir, unlink, writeFile } from "node:fs/promises";
+import {
+  detectDocxFile,
+  detectLeaveEvidenceFile,
+} from "@/lib/security/file-signature";
 
 function getExtension(mimeType: string) {
   switch (mimeType) {
@@ -61,57 +65,159 @@ export function getLeaveAttachmentMaxBytes() {
   return Number(process.env.MAX_LEAVE_ATTACHMENT_BYTES ?? 5 * 1024 * 1024);
 }
 
-export async function saveLeaveAttachment(file: File) {
-  const now = new Date();
+export async function saveLeaveAttachment(
+  file: File,
+  purpose: LeaveAttachmentPurpose,
+) {
+  const now =
+    new Date();
 
-  const bytes = Buffer.from(await file.arrayBuffer());
+  const bytes =
+    Buffer.from(
+      await file.arrayBuffer(),
+    );
 
-  const checksum = crypto.createHash("sha256").update(bytes).digest("hex");
+  const detected =
+    purpose ===
+    "ANNUAL_FORM"
+      ? detectDocxFile(
+          bytes,
+        )
+      : detectLeaveEvidenceFile(
+          bytes,
+        );
 
-  const extension = getExtension(file.type);
+  if (!detected) {
+    throw new InvalidLeaveAttachmentError(
+      purpose ===
+      "ANNUAL_FORM"
+        ? "Isi file Form Cuti tidak valid. Upload file DOCX asli."
+        : "Isi lampiran tidak valid. Gunakan file gambar atau PDF asli.",
+    );
+  }
 
-  const relativeDirectory = [
-    String(now.getUTCFullYear()),
+  /*
+   * Untuk Form Cuti nama file
+   * juga harus tetap .docx.
+   */
+  if (
+    purpose ===
+      "ANNUAL_FORM" &&
+    !file.name
+      .toLowerCase()
+      .endsWith(
+        ".docx",
+      )
+  ) {
+    throw new InvalidLeaveAttachmentError(
+      "Form Cuti harus berupa file .docx.",
+    );
+  }
 
-    String(now.getUTCMonth() + 1).padStart(2, "0"),
+  const checksum =
+    crypto
+      .createHash(
+        "sha256",
+      )
+      .update(bytes)
+      .digest("hex");
 
-    String(now.getUTCDate()).padStart(2, "0"),
-  ].join("/");
+  /*
+   * Ekstensi berasal dari
+   * isi file, BUKAN MIME browser.
+   */
+  const extension =
+    detected.extension;
 
-  const filename = `${crypto.randomUUID()}${extension}`;
+  const relativeDirectory =
+    [
+      String(
+        now.getUTCFullYear(),
+      ),
 
-  const relativePath = `${relativeDirectory}/${filename}`;
+      String(
+        now.getUTCMonth() +
+          1,
+      ).padStart(
+        2,
+        "0",
+      ),
 
-  const configuredRoot = process.env.LEAVE_STORAGE_PATH ?? "./storage/leave";
+      String(
+        now.getUTCDate(),
+      ).padStart(
+        2,
+        "0",
+      ),
+    ].join("/");
 
-  const storageRoot = path.isAbsolute(configuredRoot)
-    ? configuredRoot
-    : path.resolve(
-        /*turbopackIgnore: true*/
-        process.cwd(),
-        configuredRoot,
-      );
+  const filename =
+    `${crypto.randomUUID()}${extension}`;
 
-  const directoryPath = path.join(storageRoot, relativeDirectory);
+  const relativePath =
+    `${relativeDirectory}/${filename}`;
 
-  const absolutePath = path.join(storageRoot, relativePath);
+  const configuredRoot =
+    process.env
+      .LEAVE_STORAGE_PATH ??
+    "./storage/leave";
 
-  await mkdir(directoryPath, {
-    recursive: true,
-  });
+  const storageRoot =
+    path.isAbsolute(
+      configuredRoot,
+    )
+      ? configuredRoot
+      : path.resolve(
+          /*turbopackIgnore: true*/
+          process.cwd(),
+          configuredRoot,
+        );
 
-  await writeFile(absolutePath, bytes);
+  const directoryPath =
+    path.join(
+      storageRoot,
+      relativeDirectory,
+    );
+
+  const absolutePath =
+    path.join(
+      storageRoot,
+      relativePath,
+    );
+
+  await mkdir(
+    directoryPath,
+    {
+      recursive: true,
+    },
+  );
+
+  await writeFile(
+    absolutePath,
+    bytes,
+  );
 
   return {
-    storagePath: relativePath,
+    storagePath:
+      relativePath,
 
     absolutePath,
 
-    originalFilename: file.name || null,
+    originalFilename:
+      file.name ||
+      null,
 
-    mimeType: file.type,
+    /*
+     * MIME resmi berasal
+     * dari isi file.
+     */
+    mimeType:
+      detected.mimeType,
 
-    fileSize: BigInt(file.size),
+    fileSize:
+      BigInt(
+        bytes.length,
+      ),
 
     checksum,
   };
@@ -120,3 +226,9 @@ export async function saveLeaveAttachment(file: File) {
 export async function removeLeaveAttachment(absolutePath: string) {
   await unlink(absolutePath).catch(() => undefined);
 }
+
+export type LeaveAttachmentPurpose =
+  | "EVIDENCE"
+  | "ANNUAL_FORM";
+
+export class InvalidLeaveAttachmentError extends Error {}

@@ -13,6 +13,8 @@ import { evaluateCheckOut, getAttendanceDate } from "@/lib/attendance/time";
 
 import { checkOutSchema } from "@/lib/validation/attendance";
 
+import { detectImageFile } from "@/lib/security/file-signature";
+
 class DuplicateCheckOutError extends Error {}
 
 class MissingCheckInError extends Error {}
@@ -82,26 +84,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Selfie absen pulang wajib diambil.",
-      },
-
-      {
-        status: 400,
-      },
-    );
-  }
-
-  const allowedMimeTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/heic",
-    "image/heif",
-  ];
-
-  if (!allowedMimeTypes.includes(photo.type)) {
-    return NextResponse.json(
-      {
-        error: "Format foto tidak didukung.",
       },
 
       {
@@ -207,9 +189,22 @@ export async function POST(request: NextRequest) {
    */
   const bytes = Buffer.from(await photo.arrayBuffer());
 
+  const detectedPhoto = detectImageFile(bytes);
+
+  if (!detectedPhoto) {
+    return NextResponse.json(
+      {
+        error: "Isi file selfie tidak valid atau format gambar tidak didukung.",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
   const checksum = crypto.createHash("sha256").update(bytes).digest("hex");
 
-  const extension = getExtension(photo.type);
+  const extension = detectedPhoto.extension;
 
   const relativeDirectory = [
     String(attendanceDate.getUTCFullYear()),
@@ -324,7 +319,7 @@ export async function POST(request: NextRequest) {
 
           originalFilename: photo.name || null,
 
-          mimeType: photo.type,
+          mimeType: detectedPhoto.mimeType,
 
           fileSize: BigInt(photo.size),
 

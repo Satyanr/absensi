@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 
 import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { detectImageFile } from "@/lib/security/file-signature";
 
 import {
   AttendanceDayStatus,
@@ -103,25 +104,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Selfie wajib diambil.",
-      },
-      {
-        status: 400,
-      },
-    );
-  }
-
-  const allowedMimeTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/heic",
-    "image/heif",
-  ];
-
-  if (!allowedMimeTypes.includes(photo.type)) {
-    return NextResponse.json(
-      {
-        error: "Format foto tidak didukung.",
       },
       {
         status: 400,
@@ -386,9 +368,22 @@ export async function POST(request: NextRequest) {
    */
   const bytes = Buffer.from(await photo.arrayBuffer());
 
+  const detectedPhoto = detectImageFile(bytes);
+
+  if (!detectedPhoto) {
+    return NextResponse.json(
+      {
+        error: "Isi file selfie tidak valid atau format gambar tidak didukung.",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
   const checksum = crypto.createHash("sha256").update(bytes).digest("hex");
 
-  const extension = getExtension(photo.type);
+  const extension = detectedPhoto.extension;
 
   const relativeDirectory = [
     String(attendanceDate.getUTCFullYear()),
@@ -540,7 +535,7 @@ export async function POST(request: NextRequest) {
 
             originalFilename: photo.name || null,
 
-            mimeType: photo.type,
+            mimeType: detectedPhoto.mimeType,
 
             fileSize: BigInt(photo.size),
 

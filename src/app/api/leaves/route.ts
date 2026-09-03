@@ -12,6 +12,7 @@ import {
   isAnnualLeaveForm,
   removeLeaveAttachment,
   saveLeaveAttachment,
+  InvalidLeaveAttachmentError,
 } from "@/lib/storage/leave-attachment";
 
 import { Prisma } from "@/generated/prisma/client";
@@ -196,7 +197,11 @@ export async function POST(request: NextRequest) {
 
   try {
     if (attachment) {
-      storedAttachment = await saveLeaveAttachment(attachment);
+      storedAttachment = await saveLeaveAttachment(
+        attachment,
+
+        parsed.data.type === "ANNUAL_LEAVE" ? "ANNUAL_FORM" : "EVIDENCE",
+      );
     }
 
     const leaveRequest = await prisma.$transaction(
@@ -396,6 +401,17 @@ export async function POST(request: NextRequest) {
         },
         {
           status: 409,
+        },
+      );
+    }
+
+    if (error instanceof InvalidLeaveAttachmentError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+        },
+        {
+          status: 400,
         },
       );
     }

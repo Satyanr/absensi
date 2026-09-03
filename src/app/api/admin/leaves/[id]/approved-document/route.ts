@@ -9,6 +9,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 
 import { prisma } from "@/lib/prisma";
 
+import { detectFinalLeaveDocument } from "@/lib/security/file-signature";
+
 export const runtime = "nodejs";
 
 type RouteContext = {
@@ -279,19 +281,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const file = fileValue;
 
-  const extension = getExtension(file);
-
-  if (!extension) {
-    return NextResponse.json(
-      {
-        error: "Dokumen final harus berupa DOCX atau PDF.",
-      },
-      {
-        status: 400,
-      },
-    );
-  }
-
   if (file.size > MAX_DOCUMENT_BYTES) {
     return NextResponse.json(
       {
@@ -302,6 +291,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
       },
     );
   }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  const detectedDocument = detectFinalLeaveDocument(bytes);
+
+  if (!detectedDocument) {
+    return NextResponse.json(
+      {
+        error:
+          "Isi dokumen final tidak valid. Gunakan file DOCX atau PDF asli.",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
+  const extension = detectedDocument.extension;
 
   const leave = await prisma.leaveRequest.findUnique({
     where: {
@@ -383,8 +390,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const absolutePath = path.join(storageRoot, storagePath);
 
-  const bytes = Buffer.from(await file.arrayBuffer());
-
   const checksum = crypto.createHash("sha256").update(bytes).digest("hex");
 
   await mkdir(directoryPath, {
@@ -405,7 +410,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
           originalFilename: file.name || null,
 
-          mimeType: file.type || (extension === ".pdf" ? PDF_MIME : DOCX_MIME),
+          mimeType: detectedDocument.mimeType,
 
           fileSize: BigInt(file.size),
 
