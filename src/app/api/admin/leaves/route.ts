@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (user.role === "EMPLOYEE") {
+  if (user.role !== "ADMIN" && user.role !== "LEADER") {
     return NextResponse.json(
       {
         error: "Tidak memiliki akses.",
@@ -54,6 +54,25 @@ export async function POST(request: NextRequest) {
         error: "Data pengajuan tidak valid.",
 
         details: parsed.error.flatten(),
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
+  /*
+   * Cuti wajib menggunakan
+   * workflow pemohon.
+   *
+   * Jangan izinkan pembuatan
+   * ANNUAL_LEAVE manual dari
+   * endpoint admin.
+   */
+  if (parsed.data.type === "ANNUAL_LEAVE") {
+    return NextResponse.json(
+      {
+        error: "Cuti harus diajukan oleh pemohon melalui Form Pengajuan Cuti.",
       },
       {
         status: 400,

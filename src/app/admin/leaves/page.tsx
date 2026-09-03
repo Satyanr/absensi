@@ -69,7 +69,7 @@ export default async function LeavesPage() {
     redirect("/admin/login");
   }
 
-  if (user.role === "EMPLOYEE") {
+  if (user.role !== "ADMIN" && user.role !== "LEADER") {
     redirect("/");
   }
 
