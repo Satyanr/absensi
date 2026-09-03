@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 
 import { createPublicLeaveRequestSchema } from "@/lib/validation/leave";
 
+import { notifyNewLeaveRequest } from "@/lib/notification/leave-notification";
+
 import {
   allowedLeaveAttachmentMimeTypes,
   getLeaveAttachmentMaxBytes,
@@ -342,6 +344,29 @@ export async function POST(request: NextRequest) {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       },
     );
+
+    /*
+     * Transaksi sudah commit.
+     * Jangan hapus file attachment lagi
+     * kalau notifikasi gagal.
+     */
+    storedAttachment = null;
+
+    await notifyNewLeaveRequest({
+      leaveRequestId: leaveRequest.id,
+
+      employeeCode: employee.employeeCode,
+
+      employeeName: employee.name,
+
+      type: leaveRequest.type,
+
+      startDate: leaveRequest.startDate,
+
+      endDate: leaveRequest.endDate,
+
+      reason: leaveRequest.reason,
+    });
 
     return NextResponse.json(
       {

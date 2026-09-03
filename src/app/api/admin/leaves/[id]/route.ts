@@ -10,6 +10,8 @@ import { prisma } from "@/lib/prisma";
 
 import { countLeaveDaysByYear } from "@/lib/leave/balance";
 
+import { notifyLeaveDecision } from "@/lib/notification/leave-notification";
+
 const reviewSchema = z.object({
   action: z.enum(["APPROVE", "REJECT"]),
 });
@@ -128,6 +130,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         select: {
           employeeCode: true,
           name: true,
+          email: true,
         },
       },
     },
@@ -470,6 +473,32 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       },
     );
+
+    const reviewerName =
+      user.employee?.name ??
+      user.username ??
+      user.email ??
+      (user.role === "ADMIN" ? "Admin" : "Leader");
+
+    await notifyLeaveDecision({
+      employeeEmail: existing.employee.email,
+
+      employeeCode: existing.employee.employeeCode,
+
+      employeeName: existing.employee.name,
+
+      type: existing.type,
+
+      startDate: existing.startDate,
+
+      endDate: existing.endDate,
+
+      reason: existing.reason,
+
+      status: isApprove ? "APPROVED" : "REJECTED",
+
+      reviewerName,
+    });
 
     return NextResponse.json({
       ok: true,
