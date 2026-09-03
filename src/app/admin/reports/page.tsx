@@ -119,7 +119,7 @@ export default async function ReportsPage({ searchParams }: Props) {
     redirect("/admin/login");
   }
 
-  if (user.role === "EMPLOYEE") {
+  if (user.role !== "ADMIN" && user.role !== "LEADER") {
     redirect("/");
   }
 

@@ -363,7 +363,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  if (user.role === "EMPLOYEE") {
+  if (user.role !== "ADMIN" && user.role !== "LEADER") {
     return NextResponse.json(
       {
         error: "Tidak memiliki akses.",
