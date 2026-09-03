@@ -17,9 +17,24 @@ type Employee = {
 type LocationData = {
   latitude: number;
   longitude: number;
+
   accuracy: number;
+
   capturedAt: string;
+
   address: string | null;
+
+  officeCheck: {
+    allowed: boolean;
+
+    accuracyGood: boolean;
+
+    nearestOffice: {
+      name: string;
+
+      distanceMeters: number;
+    };
+  } | null;
 };
 
 type Attendance = {
@@ -250,6 +265,50 @@ export default function HomePage() {
 
         const address = await resolveLocationName(latitude, longitude);
 
+        let officeCheck: LocationData["officeCheck"] = null;
+
+        /*
+         * Geofence hanya dilakukan
+         * sebelum CHECK-IN OFFICE.
+         *
+         * Saat CHECK-OUT jangan cek
+         * kantor lagi.
+         */
+        if (attendanceMode === "OFFICE" && !attendance?.checkedIn) {
+          try {
+            const response = await fetch("/api/attendance/location-check", {
+              method: "POST",
+
+              headers: {
+                "Content-Type": "application/json",
+              },
+
+              body: JSON.stringify({
+                latitude,
+                longitude,
+
+                accuracy: position.coords.accuracy,
+              }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              setError(data.error ?? "Gagal memeriksa area kantor.");
+            } else {
+              officeCheck = {
+                allowed: data.allowed,
+
+                accuracyGood: data.accuracyGood,
+
+                nearestOffice: data.nearestOffice,
+              };
+            }
+          } catch {
+            setError("Gagal memeriksa area kantor.");
+          }
+        }
+
         setLocation({
           latitude,
           longitude,
@@ -259,6 +318,8 @@ export default function HomePage() {
           capturedAt: new Date().toISOString(),
 
           address,
+
+          officeCheck,
         });
 
         setLocationLoading(false);
@@ -506,7 +567,10 @@ export default function HomePage() {
   const modeLocked = alreadyCheckedIn;
 
   const canSubmitCheckIn = Boolean(
-    selfie && selfieSource && (attendanceMode === "PROJECT" || location),
+    selfie &&
+    selfieSource &&
+    (attendanceMode === "PROJECT" ||
+      (location && location.officeCheck?.allowed)),
   );
 
   return (
@@ -733,7 +797,10 @@ export default function HomePage() {
                             Akurasi GPS ±{Math.round(location.accuracy)} meter
                           </p>
                         </div>
+                        
                       )}
+
+                      
 
                       <button
                         type="button"
@@ -833,8 +900,11 @@ export default function HomePage() {
                           {submitting ? "Mengirim Absensi..." : "Absen Pulang"}
                         </button>
                       )}
+
+                      
                   </>
                 )}
+                
 
                 {projectCompleted && (
                   <div className="rounded-2xl bg-green-50 p-5 text-center">
@@ -861,6 +931,7 @@ export default function HomePage() {
                 )}
               </>
             )}
+            
           </>
         )}
 

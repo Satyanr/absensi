@@ -19,6 +19,8 @@ import { evaluateCheckIn, getAttendanceDate } from "@/lib/attendance/time";
 
 import { checkInSchema } from "@/lib/validation/attendance";
 
+import { findNearestAttendanceLocation } from "@/lib/attendance/geofence";
+
 class DuplicateCheckInError extends Error {}
 
 function getExtension(mimeType: string) {
@@ -171,6 +173,20 @@ export async function POST(request: NextRequest) {
 
   const isProject = attendanceMode === AttendanceMode.PROJECT;
 
+  const MAX_ACCURACY = Number(
+    process.env.MAX_OFFICE_GPS_ACCURACY_METERS ?? 500,
+  );
+
+  let geofence: {
+    locationId: string;
+
+    locationName: string;
+
+    radiusMeters: number;
+
+    distanceMeters: number;
+  } | null = null;
+
   /*
    * Tentukan tanggal berdasarkan WIB.
    */
@@ -231,6 +247,130 @@ export async function POST(request: NextRequest) {
     }
 
     evaluation = evaluateCheckIn(serverReceivedAt, policy, policy.timezone);
+  }
+
+  /*
+   * =========================
+   * OFFICE GEOFENCE
+   * =========================
+   *
+   * Hanya CHECK-IN OFFICE.
+   *
+   * PROJECT tidak memakai
+   * geofence.
+   */
+  if (!isProject) {
+    const latitude = parsed.data.latitude;
+
+    const longitude = parsed.data.longitude;
+
+    const accuracy = parsed.data.accuracy;
+
+    /*
+     * Sebenarnya schema sudah
+     * mewajibkan ini untuk OFFICE,
+     * tapi tetap dibuat defensif.
+     */
+    if (
+      latitude === undefined ||
+      longitude === undefined ||
+      accuracy === undefined
+    ) {
+      return NextResponse.json(
+        {
+          error: "GPS wajib untuk absensi kantor.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    if (accuracy > MAX_ACCURACY) {
+      return NextResponse.json(
+        {
+          error: "Akurasi GPS terlalu rendah. Silakan ambil ulang lokasi.",
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
+    const officeLocations = await prisma.attendanceLocation.findMany({
+      where: {
+        active: true,
+      },
+
+      select: {
+        id: true,
+
+        name: true,
+
+        latitude: true,
+
+        longitude: true,
+
+        radiusMeters: true,
+      },
+    });
+
+    if (officeLocations.length === 0) {
+      return NextResponse.json(
+        {
+          error: "Lokasi kantor aktif belum diatur.",
+        },
+        {
+          status: 500,
+        },
+      );
+    }
+
+    const nearest = findNearestAttendanceLocation(
+      latitude,
+      longitude,
+      officeLocations,
+    );
+
+    if (!nearest) {
+      return NextResponse.json(
+        {
+          error: "Lokasi kantor tidak valid.",
+        },
+        {
+          status: 500,
+        },
+      );
+    }
+
+    geofence = {
+      locationId: nearest.id,
+
+      locationName: nearest.name,
+
+      radiusMeters: nearest.radiusMeters,
+
+      distanceMeters: nearest.distanceMeters,
+    };
+
+    if (nearest.distanceMeters > nearest.radiusMeters) {
+      return NextResponse.json(
+        {
+          error: `Anda berada di luar area kantor. Kantor terdekat: ${nearest.name}, jarak ${Math.round(
+            nearest.distanceMeters,
+          )} meter.`,
+
+          nearestOffice: {
+            name: nearest.name,
+
+            distanceMeters: Math.round(nearest.distanceMeters),
+          },
+        },
+        {
+          status: 409,
+        },
+      );
+    }
   }
 
   /*
@@ -429,6 +569,10 @@ export async function POST(request: NextRequest) {
 
             address: parsed.data.address ?? null,
 
+            outsideGeofence: isProject ? null : false,
+
+            distanceMeters: geofence ? geofence.distanceMeters : null,
+
             photoId: attachment.id,
 
             source: parsed.data.source,
@@ -437,6 +581,18 @@ export async function POST(request: NextRequest) {
               userAgent: request.headers.get("user-agent"),
 
               forwardedFor: request.headers.get("x-forwarded-for"),
+
+              geofence: geofence
+                ? {
+                    attendanceLocationId: geofence.locationId,
+
+                    attendanceLocationName: geofence.locationName,
+
+                    radiusMeters: geofence.radiusMeters,
+
+                    distanceMeters: Math.round(geofence.distanceMeters),
+                  }
+                : null,
             },
           },
         });

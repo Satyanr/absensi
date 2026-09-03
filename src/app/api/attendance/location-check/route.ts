@@ -1,0 +1,173 @@
+import {
+  NextResponse,
+} from "next/server";
+
+import { z } from "zod";
+
+import {
+  prisma,
+} from "@/lib/prisma";
+
+import {
+  findNearestAttendanceLocation,
+} from "@/lib/attendance/geofence";
+
+const locationSchema =
+  z.object({
+    latitude:
+      z.number()
+        .min(-90)
+        .max(90),
+
+    longitude:
+      z.number()
+        .min(-180)
+        .max(180),
+
+    accuracy:
+      z.number()
+        .min(0)
+        .max(10000),
+  });
+
+const MAX_ACCURACY =
+  Number(
+    process.env
+      .MAX_OFFICE_GPS_ACCURACY_METERS ??
+      500,
+  );
+
+export async function POST(
+  request: Request,
+) {
+  let body:
+    unknown;
+
+  try {
+    body =
+      await request.json();
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "Request lokasi tidak valid.",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
+  const parsed =
+    locationSchema.safeParse(
+      body,
+    );
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        error:
+          "Data GPS tidak valid.",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
+  const locations =
+    await prisma
+      .attendanceLocation
+      .findMany({
+        where: {
+          active:
+            true,
+        },
+
+        select: {
+          id:
+            true,
+
+          name:
+            true,
+
+          latitude:
+            true,
+
+          longitude:
+            true,
+
+          radiusMeters:
+            true,
+        },
+      });
+
+  if (
+    locations.length === 0
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Lokasi kantor aktif belum diatur.",
+      },
+      {
+        status: 503,
+      },
+    );
+  }
+
+  const nearest =
+    findNearestAttendanceLocation(
+      parsed.data.latitude,
+      parsed.data.longitude,
+      locations,
+    );
+
+  if (!nearest) {
+    return NextResponse.json(
+      {
+        error:
+          "Lokasi kantor tidak valid.",
+      },
+      {
+        status: 500,
+      },
+    );
+  }
+
+  const accuracyGood =
+    parsed.data.accuracy <=
+    MAX_ACCURACY;
+
+  const withinRadius =
+    nearest.distanceMeters <=
+    nearest.radiusMeters;
+
+  return NextResponse.json(
+    {
+      ok: true,
+
+      allowed:
+        accuracyGood &&
+        withinRadius,
+
+      accuracyGood,
+
+      nearestOffice: {
+        name:
+          nearest.name,
+
+        distanceMeters:
+          Math.round(
+            nearest.distanceMeters,
+          ),
+      },
+    },
+    {
+      headers: {
+        "Cache-Control":
+          "no-store",
+      },
+    },
+  );
+}
