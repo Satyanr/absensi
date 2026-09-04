@@ -1,33 +1,22 @@
 "use client";
 
-import {
-  useState,
-} from "react";
+import { useState } from "react";
 
-import {
-  useRouter,
-} from "next/navigation";
+import { useRouter } from "next/navigation";
 
-import {
-  useToastFeedback,
-} from "@/components/ui/ToastProvider";
+import { useToastFeedback } from "@/components/ui/ToastProvider";
 
 type Props = {
   employeeId: string;
   active: boolean;
 };
 
-export default function EmployeeStatusButton({
-  employeeId,
-  active,
-}: Props) {
-  const router =
-    useRouter();
+export default function EmployeeStatusButton({ employeeId, active }: Props) {
+  const router = useRouter();
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const { setError, setSuccess } = useToastFeedback();
 
   async function toggleStatus() {
     if (loading) {
@@ -39,10 +28,9 @@ export default function EmployeeStatusButton({
      * menonaktifkan.
      */
     if (active) {
-      const confirmed =
-        window.confirm(
-          "Nonaktifkan karyawan ini? Karyawan tidak akan bisa melakukan absensi."
-        );
+      const confirmed = window.confirm(
+        "Nonaktifkan karyawan ini? Karyawan tidak akan bisa melakukan absensi.",
+      );
 
       if (!confirmed) {
         return;
@@ -52,40 +40,29 @@ export default function EmployeeStatusButton({
     setLoading(true);
 
     try {
-      const response =
-        await fetch(
-          `/api/admin/employees/${employeeId}`,
-          {
-            method: "PATCH",
+      const response = await fetch(`/api/admin/employees/${employeeId}`, {
+        method: "PATCH",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+        headers: {
+          "Content-Type": "application/json",
+        },
 
-            body: JSON.stringify({
-              active: !active,
-            }),
-          }
-        );
+        body: JSON.stringify({
+          active: !active,
+        }),
+      });
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        alert(
-          data.error ??
-            "Gagal mengubah status."
-        );
+        setError(data.error ?? "Gagal mengubah status.");
 
         return;
       }
 
       router.refresh();
     } catch {
-      alert(
-        "Terjadi masalah jaringan."
-      );
+      setError("Terjadi masalah jaringan.");
     } finally {
       setLoading(false);
     }
@@ -97,16 +74,10 @@ export default function EmployeeStatusButton({
       onClick={toggleStatus}
       disabled={loading}
       className={`rounded-lg px-3 py-2 text-xs font-medium ${
-        active
-          ? "bg-red-50 text-red-700"
-          : "bg-green-50 text-green-700"
+        active ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
       } disabled:opacity-50`}
     >
-      {loading
-        ? "Memproses..."
-        : active
-        ? "Nonaktifkan"
-        : "Aktifkan"}
+      {loading ? "Memproses..." : active ? "Nonaktifkan" : "Aktifkan"}
     </button>
   );
 }

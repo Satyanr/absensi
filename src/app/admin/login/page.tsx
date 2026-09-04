@@ -15,22 +15,47 @@ export default function LoginPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (loading) {
+      return;
+    }
+
     setLoading(true);
     setError("");
-    const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        identifier: form.get("identifier"),
-        secret: form.get("secret"),
-      }),
-    });
-    const data = await response.json();
-    setLoading(false);
-    if (!response.ok) return setError(data.error ?? "Login gagal.");
-    router.replace("/admin/dashboard");
-    router.refresh();
+
+    try {
+      const form = new FormData(event.currentTarget);
+
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+
+        headers: {
+          "content-type": "application/json",
+        },
+
+        body: JSON.stringify({
+          identifier: form.get("identifier"),
+
+          secret: form.get("secret"),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error ?? "Login gagal.");
+
+        return;
+      }
+
+      router.replace("/admin/dashboard");
+
+      router.refresh();
+    } catch {
+      setError("Terjadi masalah jaringan.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

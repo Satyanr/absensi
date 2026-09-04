@@ -278,11 +278,15 @@ function PublicLeaveContent() {
     <main className="min-h-screen bg-neutral-100 px-4 py-8">
       <div className="mx-auto max-w-md space-y-4">
         <div className="rounded-2xl bg-white p-6 shadow-sm">
-          <h1 className="text-2xl font-bold">Izin, Sakit & Cuti</h1>
+          <BrandLogo />
 
-          <p className="mt-2 text-sm text-neutral-500">
-            Kirim pengajuan tanpa login. Pengajuan akan diperiksa oleh admin.
-          </p>
+          <div className="mt-5 border-t border-neutral-100 pt-5">
+            <h1 className="text-2xl font-bold">Izin, Sakit & Cuti</h1>
+
+            <p className="mt-2 text-sm text-neutral-500">
+              Kirim pengajuan tanpa login. Pengajuan akan diperiksa oleh admin.
+            </p>
+          </div>
         </div>
 
         <LoadingOverlay

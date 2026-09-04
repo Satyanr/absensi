@@ -23,6 +23,11 @@ export default function NotificationRetryButton({
   const [loading, setLoading] =
     useState(false);
 
+    const {
+  setError,
+  setSuccess,
+} = useToastFeedback();
+
   async function retry() {
     if (loading) {
       return;
@@ -53,23 +58,16 @@ export default function NotificationRetryButton({
         await response.json();
 
       if (!response.ok) {
-        window.alert(
-          data.error ??
-            "Gagal mengirim ulang email.",
-        );
+        setError(data.error ?? "Gagal mengirim ulang email.");
 
         return;
       }
 
-      window.alert(
-        data.message,
-      );
+      setSuccess(data.message);
 
       router.refresh();
     } catch {
-      window.alert(
-        "Terjadi masalah jaringan.",
-      );
+      setError("Terjadi masalah jaringan.");
     } finally {
       setLoading(false);
     }

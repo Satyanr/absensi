@@ -551,10 +551,6 @@ export default function HomePage() {
               Masukkan kode karyawan untuk memulai absensi.
             </p>
           </div>
-
-          <p className="mt-2 text-sm text-neutral-500">
-            Masukkan kode karyawan untuk memulai absensi.
-          </p>
         </div>
 
         {!employee && (

@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 
 import { useToastFeedback } from "@/components/ui/ToastProvider";
 
+import {
+  LoadingLabel,
+} from "@/components/ui/Loading";
+
 type ReviewAction = "APPROVE" | "REJECT";
 
 type LeaveType = "PERMISSION" | "SICK" | "ANNUAL_LEAVE";

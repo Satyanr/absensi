@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 
 import { useToastFeedback } from "@/components/ui/ToastProvider";
 
+import {
+  LoadingLabel,
+} from "@/components/ui/Loading";
+
 type Employee = {
   id: string;
   employeeCode: string;
@@ -176,7 +180,9 @@ export default function LeaveCreateForm({
         disabled={loading}
         className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50"
       >
-        {loading ? "Menyimpan..." : "Simpan Pengajuan"}
+        <LoadingLabel loading={loading} loadingText="Menyimpan...">
+          Simpan Pengajuan
+        </LoadingLabel>
       </button>
     </form>
   );

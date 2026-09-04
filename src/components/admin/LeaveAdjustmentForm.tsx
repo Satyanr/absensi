@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 
 import { useToastFeedback } from "@/components/ui/ToastProvider";
 
+import {
+  LoadingLabel,
+} from "@/components/ui/Loading";
+
 type Props = {
   leaveRequestId: string;
 
@@ -80,7 +84,7 @@ export default function LeaveAdjustmentForm({
         return;
       }
 
-      window.alert(data.message ?? "Cuti berhasil dikoreksi.");
+      setSuccess(data.message ?? "Cuti berhasil dikoreksi.");
 
       setOpen(false);
 
@@ -187,7 +191,9 @@ export default function LeaveAdjustmentForm({
         disabled={loading}
         className="mt-4 w-full rounded-xl bg-amber-600 py-3 text-sm font-semibold text-white disabled:opacity-50"
       >
-        {loading ? "Menyimpan..." : "Simpan Koreksi Cuti"}
+        <LoadingLabel loading={loading} loadingText="Menyimpan...">
+          Simpan Koreksi Cuti
+        </LoadingLabel>
       </button>
     </form>
   );

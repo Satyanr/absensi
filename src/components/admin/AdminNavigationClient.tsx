@@ -4,6 +4,8 @@ import Link from "next/link";
 
 import { usePathname } from "next/navigation";
 
+import BrandLogo from "@/components/BrandLogo";
+
 type Role = "EMPLOYEE" | "OFFICER" | "LEADER" | "ADMIN" | null;
 
 type Props = {

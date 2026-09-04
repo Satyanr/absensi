@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 
 import { useToastFeedback } from "@/components/ui/ToastProvider";
 
+import { LoadingLabel } from "@/components/ui/Loading";
+
 type UserData = {
   id: string;
 
@@ -180,7 +182,9 @@ export default function UserEditForm({ user, isCurrentUser }: Props) {
         disabled={loading}
         className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50"
       >
-        {loading ? "Menyimpan..." : "Simpan Perubahan"}
+        <LoadingLabel loading={loading} loadingText="Menyimpan...">
+          Simpan Perubahan
+        </LoadingLabel>
       </button>
     </form>
   );

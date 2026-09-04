@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 
 import { useToastFeedback } from "@/components/ui/ToastProvider";
 
+import { LoadingLabel } from "@/components/ui/Loading";
+
 export default function EmployeeCreateForm() {
   const router = useRouter();
 
@@ -180,7 +182,9 @@ export default function EmployeeCreateForm() {
         disabled={loading}
         className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50"
       >
-        {loading ? "Menyimpan..." : "Simpan Karyawan"}
+        <LoadingLabel loading={loading} loadingText="Menyimpan...">
+          Simpan
+        </LoadingLabel>
       </button>
     </form>
   );

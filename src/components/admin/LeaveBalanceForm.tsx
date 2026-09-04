@@ -4,6 +4,10 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { useToastFeedback } from "@/components/ui/ToastProvider";
 
+import {
+  LoadingLabel,
+} from "@/components/ui/Loading";
+
 type Employee = {
   id: string;
   employeeCode: string;
@@ -298,7 +302,9 @@ export default function LeaveBalanceForm({
         disabled={saving || loading || !employeeId}
         className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50"
       >
-        {saving ? "Menyimpan..." : "Simpan Saldo Cuti"}
+        <LoadingLabel loading={saving} loadingText="Menyimpan...">
+          Simpan Saldo Cuti
+        </LoadingLabel>
       </button>
     </form>
   );

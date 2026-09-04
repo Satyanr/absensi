@@ -1,16 +1,10 @@
 "use client";
 
-import {
-  useState,
-} from "react";
+import { useState } from "react";
 
-import {
-  useRouter,
-} from "next/navigation";
+import { useRouter } from "next/navigation";
 
-import {
-  useToastFeedback,
-} from "@/components/ui/ToastProvider";
+import { useToastFeedback } from "@/components/ui/ToastProvider";
 
 type Props = {
   userId: string;
@@ -25,26 +19,20 @@ export default function UserStatusButton({
   active,
   isCurrentUser = false,
 }: Props) {
-  const router =
-    useRouter();
+  const router = useRouter();
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const { setError, setSuccess } = useToastFeedback();
 
   async function updateStatus() {
-    if (
-      loading ||
-      isCurrentUser
-    ) {
+    if (loading || isCurrentUser) {
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        active
-          ? "Nonaktifkan user ini?"
-          : "Aktifkan kembali user ini?",
-      );
+    const confirmed = window.confirm(
+      active ? "Nonaktifkan user ini?" : "Aktifkan kembali user ini?",
+    );
 
     if (!confirmed) {
       return;
@@ -53,43 +41,29 @@ export default function UserStatusButton({
     setLoading(true);
 
     try {
-      const response =
-        await fetch(
-          `/api/admin/users/${userId}`,
-          {
-            method:
-              "PATCH",
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+        headers: {
+          "Content-Type": "application/json",
+        },
 
-            body:
-              JSON.stringify({
-                active:
-                  !active,
-              }),
-          },
-        );
+        body: JSON.stringify({
+          active: !active,
+        }),
+      });
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        window.alert(
-          data.error ??
-            "Gagal mengubah status user.",
-        );
+        setError(data.error ?? "Gagal mengubah status user.");
 
         return;
       }
 
       router.refresh();
     } catch {
-      window.alert(
-        "Terjadi masalah jaringan.",
-      );
+      setError("Terjadi masalah jaringan.");
     } finally {
       setLoading(false);
     }
@@ -99,14 +73,9 @@ export default function UserStatusButton({
     <button
       type="button"
       onClick={updateStatus}
-      disabled={
-        loading ||
-        isCurrentUser
-      }
+      disabled={loading || isCurrentUser}
       className={`rounded-lg px-3 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
-        active
-          ? "bg-red-50 text-red-700"
-          : "bg-green-50 text-green-700"
+        active ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
       }`}
     >
       {isCurrentUser
