@@ -13,14 +13,16 @@ import {
   useToastFeedback,
 } from "@/components/ui/ToastProvider";
 
-type EmployeeResult = {
+export type EmployeeResult = {
   employeeCode: string;
+
   name: string;
 
   employmentType:
     | "EMPLOYEE"
     | "INTERN";
 };
+
 
 export default function EmployeeCodeFinder({
   onSelect,

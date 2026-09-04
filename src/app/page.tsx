@@ -19,7 +19,10 @@ type SelfieSource = "WEB_CAMERA" | "WEB_FILE_CAPTURE";
 
 type Employee = {
   employeeCode: string;
+
   name: string;
+
+  employmentType: "EMPLOYEE" | "INTERN";
 };
 
 type LocationData = {
@@ -144,7 +147,7 @@ export default function HomePage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error ?? "Karyawan tidak ditemukan.");
+        setError(data.error ?? "Personel tidak ditemukan.");
 
         return;
       }
@@ -564,6 +567,13 @@ export default function HomePage() {
               value={employeeCode}
               onChange={setEmployeeCode}
               disabled={loading}
+              onEmployeeSelect={(selected) => {
+                setEmployeeCode(selected.employeeCode);
+
+                setEmployee(selected);
+
+                setAttendance(null);
+              }}
             />
 
             <button
@@ -582,7 +592,7 @@ export default function HomePage() {
           <>
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <p className="text-xs uppercase tracking-wide text-neutral-500">
-                Karyawan
+                {employee.employmentType === "INTERN" ? "Magang" : "Karyawan"}
               </p>
 
               <h2 className="mt-1 text-xl font-bold">{employee.name}</h2>

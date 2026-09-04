@@ -18,7 +18,12 @@ import EmployeeCodeInput, {
 
 type Employee = {
   employeeCode: string;
+
   name: string;
+
+  employmentType: "EMPLOYEE" | "INTERN";
+
+  canRequestAnnualLeave: boolean;
 };
 
 type LeaveType = "PERMISSION" | "SICK" | "ANNUAL_LEAVE";
@@ -33,7 +38,9 @@ function PublicLeaveContent() {
   );
 
   const shouldAutoLookup = Boolean(
-    initialEmployeeCode && normalizedInitialEmployeeCode !== "EMP",
+    initialEmployeeCode &&
+    normalizedInitialEmployeeCode !== "EMP" &&
+    normalizedInitialEmployeeCode !== "MAG",
   );
 
   const [employeeCode, setEmployeeCode] = useState(
@@ -65,8 +72,8 @@ function PublicLeaveContent() {
   async function lookupEmployee(code: string) {
     const cleanCode = normalizePersonnelCode(code.trim());
 
-    if (cleanCode === "EMP") {
-      setError("Nomor kode karyawan wajib diisi.");
+    if (cleanCode === "EMP" || cleanCode === "MAG") {
+      setError("Nomor kode personel wajib diisi.");
 
       return;
     }
@@ -351,7 +358,7 @@ function PublicLeaveContent() {
             </div>
 
             <p className="mt-3 text-sm text-neutral-500">
-              Memuat data karyawan...
+              Memuat data personel...
             </p>
           </div>
         )}
@@ -361,16 +368,20 @@ function PublicLeaveContent() {
             onSubmit={searchEmployee}
             className="rounded-2xl bg-white p-6 shadow-sm"
           >
-            <label className="text-sm font-medium">Kode Karyawan</label>
 
             <EmployeeCodeInput
               value={employeeCode}
               onChange={setEmployeeCode}
               disabled={lookupLoading}
+              onEmployeeSelect={(selected) => {
+                /*
+                 * Finder hanya menentukan
+                 * personel. Lookup resmi juga
+                 * mengambil hak Cuti.
+                 */
+                void lookupEmployee(selected.employeeCode);
+              }}
             />
-            <p className="mt-1 text-xs text-neutral-500">
-              Prefix EMP otomatis. Cukup ketik nomor karyawan, contoh 001.
-            </p>
 
             <button
               type="submit"
@@ -438,8 +449,21 @@ function PublicLeaveContent() {
 
                     <option value="SICK">Sakit</option>
 
-                    <option value="ANNUAL_LEAVE">Cuti</option>
+                    <option
+                      value="ANNUAL_LEAVE"
+                      disabled={!employee.canRequestAnnualLeave}
+                    >
+                      {employee.canRequestAnnualLeave
+                        ? "Cuti"
+                        : "Cuti (belum tersedia)"}
+                    </option>
                   </select>
+                  {!employee.canRequestAnnualLeave && (
+                    <p className="mt-2 text-xs text-amber-700">
+                      Personel ini belum memiliki hak Cuti Tahunan. Izin dan
+                      Sakit tetap dapat diajukan.
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

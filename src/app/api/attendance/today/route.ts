@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
   if (!employeeCode) {
     return NextResponse.json(
-      { error: "Kode karyawan wajib diisi." },
+      { error: "Kode personel wajib diisi." },
       { status: 400 },
     );
   }
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
   if (!employee) {
     return NextResponse.json(
-      { error: "Karyawan tidak ditemukan." },
+      { error: "Personel tidak ditemukan." },
       { status: 404 },
     );
   }

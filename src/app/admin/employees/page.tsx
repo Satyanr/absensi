@@ -164,14 +164,13 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
         <div className="mt-6 inline-flex rounded-xl bg-white p-1 shadow-sm">
           <Link
-            href="/admin/employees"
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
+            href={
               typeFilter === "ALL"
-                ? "bg-blue-600 text-white"
-                : "text-neutral-600"
-            }`}
+                ? "/admin/employees"
+                : `/admin/employees?type=${typeFilter}`
+            }
           >
-            Semua ({totalEmployees})
+            Reset ({totalEmployees})
           </Link>
 
           <Link
@@ -223,7 +222,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
                   type="search"
                   name="q"
                   defaultValue={query}
-                  placeholder="Contoh: EMP001 atau Budi"
+                  placeholder="Contoh: EMP001, MAG001 atau Budi"
                   autoComplete="off"
                   className="min-w-0 flex-1 rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-blue-500"
                 />
@@ -318,7 +317,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
                   <table className="w-full text-left text-sm">
                     <thead className="bg-neutral-50 text-xs uppercase text-neutral-500">
                       <tr>
-                        <th className="px-5 py-4">Karyawan</th>
+                        <th className="px-5 py-4">Personel</th>
 
                         <th className="px-5 py-4">Kontak</th>
 
