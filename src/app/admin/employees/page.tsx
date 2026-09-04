@@ -12,6 +12,8 @@ import EmployeeStatusButton from "@/components/admin/EmployeeStatusButton";
 
 import AdminNavigation from "@/components/admin/AdminNavigation";
 
+import type { Prisma } from "@/generated/prisma/client";
+
 function formatJoinDate(value: Date | null) {
   if (!value) {
     return "—";
@@ -51,10 +53,10 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
   const rawType = Array.isArray(params.type) ? params.type[0] : params.type;
 
-  const typeFilter =
+  const typeFilter: "ALL" | "EMPLOYEE" | "INTERN" =
     rawType === "EMPLOYEE" || rawType === "INTERN" ? rawType : "ALL";
 
-  const where = {
+  const where: Prisma.EmployeeWhereInput = {
     ...(typeFilter !== "ALL"
       ? {
           employmentType: typeFilter,
@@ -142,7 +144,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
   return (
     <main className="min-h-screen bg-neutral-100">
-      <div className="mx-auto max-w-6xl p-4 md:p-8">
+      <div className="mx-auto max-w-[1500px] p-4 md:p-8">
         {/* HEADER */}
         <AdminNavigation />
 
@@ -162,48 +164,14 @@ export default async function EmployeesPage({ searchParams }: Props) {
           </div>
         </div>
 
-        <div className="mt-6 inline-flex rounded-xl bg-white p-1 shadow-sm">
-          <Link
-            href={
-              typeFilter === "ALL"
-                ? "/admin/employees"
-                : `/admin/employees?type=${typeFilter}`
-            }
-          >
-            Reset ({totalEmployees})
-          </Link>
-
-          <Link
-            href="/admin/employees?type=EMPLOYEE"
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              typeFilter === "EMPLOYEE"
-                ? "bg-blue-600 text-white"
-                : "text-neutral-600"
-            }`}
-          >
-            Karyawan ({employeeCount})
-          </Link>
-
-          <Link
-            href="/admin/employees?type=INTERN"
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              typeFilter === "INTERN"
-                ? "bg-blue-600 text-white"
-                : "text-neutral-600"
-            }`}
-          >
-            Magang ({internCount})
-          </Link>
-        </div>
-
-        <div className="mt-6 grid gap-6 lg:grid-cols-[360px_1fr]">
+        <div className="mt-6 grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
           {/* FORM */}
           <div>
             <EmployeeCreateForm />
           </div>
 
           {/* LIST */}
-          <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
+          <section className="min-w-0 overflow-hidden rounded-2xl bg-white shadow-sm">
             <div className="border-b border-neutral-200 p-5">
               <h2 className="font-semibold">Data Personel</h2>
 
@@ -213,7 +181,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
               <form
                 method="get"
-                className="mt-4 flex flex-col gap-2 sm:flex-row"
+                className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
               >
                 {typeFilter !== "ALL" && (
                   <input type="hidden" name="type" value={typeFilter} />
@@ -224,7 +192,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
                   defaultValue={query}
                   placeholder="Contoh: EMP001, MAG001 atau Budi"
                   autoComplete="off"
-                  className="min-w-0 flex-1 rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-blue-500"
+                  className="min-w-0 rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-blue-500"
                 />
 
                 <button
@@ -236,18 +204,57 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
                 {query && (
                   <Link
-                    href="/admin/employees"
-                    className="rounded-xl border border-neutral-300 px-5 py-3 text-center text-sm font-semibold text-neutral-600"
+                    href={
+                      typeFilter === "ALL"
+                        ? "/admin/employees"
+                        : `/admin/employees?type=${typeFilter}`
+                    }
+                    className="rounded-xl border border-neutral-300 px-5 py-3 text-center text-sm font-semibold text-neutral-600 hover:bg-neutral-50"
                   >
                     Reset
                   </Link>
                 )}
               </form>
 
+              <div className="mt-6 flex flex-wrap gap-2">
+                <Link
+                  href="/admin/employees"
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                    typeFilter === "ALL"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-neutral-600 shadow-sm hover:bg-neutral-50"
+                  }`}
+                >
+                  Semua ({totalEmployees})
+                </Link>
+
+                <Link
+                  href="/admin/employees?type=EMPLOYEE"
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                    typeFilter === "EMPLOYEE"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-neutral-600 shadow-sm hover:bg-neutral-50"
+                  }`}
+                >
+                  Karyawan ({employeeCount})
+                </Link>
+
+                <Link
+                  href="/admin/employees?type=INTERN"
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                    typeFilter === "INTERN"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-neutral-600 shadow-sm hover:bg-neutral-50"
+                  }`}
+                >
+                  Magang ({internCount})
+                </Link>
+              </div>
+
               <p className="mt-3 text-xs text-neutral-500">
                 {query
                   ? `${employees.length} hasil untuk "${query}"`
-                  : `${totalEmployees} karyawan terdaftar.`}
+                  : `${totalEmployees} personel terdaftar.`}
               </p>
             </div>
 
@@ -314,20 +321,22 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
                 {/* DESKTOP */}
                 <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full text-left text-sm">
+                  <table className="w-full min-w-[950px] text-left text-sm">
                     <thead className="bg-neutral-50 text-xs uppercase text-neutral-500">
                       <tr>
-                        <th className="px-5 py-4">Personel</th>
+                        <th className="w-[22%] px-5 py-4">Personel</th>
 
-                        <th className="px-5 py-4">Kontak</th>
+                        <th className="w-[25%] px-5 py-4">Kontak</th>
 
-                        <th className="px-5 py-4">Tgl Masuk</th>
+                        <th className="whitespace-nowrap px-5 py-4">
+                          Tgl Masuk
+                        </th>
 
-                        <th className="px-5 py-4">Cuti</th>
+                        <th className="whitespace-nowrap px-5 py-4">Cuti</th>
 
-                        <th className="px-5 py-4">Status</th>
+                        <th className="whitespace-nowrap px-5 py-4">Status</th>
 
-                        <th className="px-5 py-4">Aksi</th>
+                        <th className="whitespace-nowrap px-5 py-4">Aksi</th>
                       </tr>
                     </thead>
 
@@ -350,7 +359,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
                             </p>
                           </td>
 
-                          <td className="px-5 py-4">
+                          <td className="whitespace-nowrap px-5 py-4">
                             {formatJoinDate(employee.joinDate)}
                           </td>
 
@@ -374,7 +383,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
                           </td>
 
                           <td className="px-5 py-4">
-                            <div className="flex gap-2">
+                            <div className="flex min-w-max gap-2">
                               <Link
                                 href={`/admin/employees/${employee.id}/edit`}
                                 className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700"

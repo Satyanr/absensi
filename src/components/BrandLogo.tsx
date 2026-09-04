@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 type Props = {
@@ -5,17 +6,18 @@ type Props = {
   compact?: boolean;
 };
 
-export default function BrandLogo({
-  href = "/",
-  compact = false,
-}: Props) {
+export default function BrandLogo({ href = "/", compact = false }: Props) {
   return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-3"
-    >
-      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-blue-600 text-xl font-black text-white shadow-sm">
-        A
+    <Link href={href} className="inline-flex items-center gap-3">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white">
+        <Image
+          src="/branding/icon.svg"
+          alt="Visitiga Media"
+          width={64}
+          height={64}
+          priority
+          className="h-full w-full object-contain"
+        />
       </div>
 
       {!compact && (
@@ -25,7 +27,7 @@ export default function BrandLogo({
           </div>
 
           <div className="text-xs font-medium tracking-wide text-neutral-500">
-            INTERNAL
+            Visitiga Media
           </div>
         </div>
       )}
