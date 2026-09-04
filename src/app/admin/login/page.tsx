@@ -2,10 +2,15 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import BrandLogo from "@/components/BrandLogo";
+
+import { LoadingLabel } from "@/components/ui/Loading";
+
+import { useToastFeedback } from "@/components/ui/ToastProvider";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [error, setError] = useState("");
+  const { setError } = useToastFeedback();
   const [loading, setLoading] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -35,6 +40,7 @@ export default function LoginPage() {
         className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-sm border border-black/5 space-y-4"
       >
         <div>
+          <BrandLogo />
           <h1 className="text-2xl font-semibold">Absensi</h1>
           <p className="text-sm text-neutral-500 mt-1">
             Masuk dengan employee code/username/email.
@@ -60,12 +66,13 @@ export default function LoginPage() {
             className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-3"
           />
         </label>
-        {error && <p className="text-sm text-red-700">{error}</p>}
         <button
           disabled={loading}
           className="w-full rounded-xl bg-black text-white py-3 font-medium disabled:opacity-50"
         >
-          {loading ? "Memproses..." : "Masuk"}
+          <LoadingLabel loading={loading} loadingText="Memproses...">
+            Masuk
+          </LoadingLabel>
         </button>
       </form>
     </main>

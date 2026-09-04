@@ -1,48 +1,27 @@
 "use client";
 
-import {
-  FormEvent,
-  useState,
-} from "react";
+import { FormEvent, useState } from "react";
 
-import {
-  useRouter,
-} from "next/navigation";
+import { useRouter } from "next/navigation";
+
+import { useToastFeedback } from "@/components/ui/ToastProvider";
 
 export default function UserCreateForm() {
-  const router =
-    useRouter();
+  const router = useRouter();
 
-  const [email, setEmail] =
-    useState("");
+  const [email, setEmail] = useState("");
 
-  const [
-    username,
-    setUsername,
-  ] = useState("");
+  const [username, setUsername] = useState("");
 
-  const [
-    password,
-    setPassword,
-  ] = useState("");
+  const [password, setPassword] = useState("");
 
-  const [role, setRole] =
-    useState<
-      "ADMIN" | "LEADER"
-    >("LEADER");
+  const [role, setRole] = useState<"ADMIN" | "LEADER">("LEADER");
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const { setError, setSuccess } = useToastFeedback();
 
-  const [success, setSuccess] =
-    useState("");
-
-  async function submit(
-    event: FormEvent,
-  ) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
 
     if (loading) {
@@ -54,48 +33,33 @@ export default function UserCreateForm() {
     setSuccess("");
 
     try {
-      const response =
-        await fetch(
-          "/api/admin/users",
-          {
-            method:
-              "POST",
+      const response = await fetch("/api/admin/users", {
+        method: "POST",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+        headers: {
+          "Content-Type": "application/json",
+        },
 
-            body:
-              JSON.stringify({
-                email,
+        body: JSON.stringify({
+          email,
 
-                username:
-                  username.trim() ||
-                  undefined,
+          username: username.trim() || undefined,
 
-                password,
+          password,
 
-                role,
-              }),
-          },
-        );
+          role,
+        }),
+      });
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        setError(
-          data.error ??
-            "Gagal menambahkan user.",
-        );
+        setError(data.error ?? "Gagal menambahkan user.");
 
         return;
       }
 
-      setSuccess(
-        "User berhasil ditambahkan.",
-      );
+      setSuccess("User berhasil ditambahkan.");
 
       setEmail("");
       setUsername("");
@@ -104,46 +68,23 @@ export default function UserCreateForm() {
 
       router.refresh();
     } catch {
-      setError(
-        "Terjadi masalah jaringan.",
-      );
+      setError("Terjadi masalah jaringan.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <form
-      onSubmit={submit}
-      className="rounded-2xl bg-white p-5 shadow-sm"
-    >
-      <h2 className="font-semibold">
-        Tambah User
-      </h2>
+    <form onSubmit={submit} className="rounded-2xl bg-white p-5 shadow-sm">
+      <h2 className="font-semibold">Tambah User</h2>
 
       <p className="mt-1 text-sm text-neutral-500">
-        Buat akun Admin atau
-        Leader.
+        Buat akun Admin atau Leader.
       </p>
-
-      {error && (
-        <div className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mt-4 rounded-xl bg-green-50 p-3 text-sm text-green-700">
-          {success}
-        </div>
-      )}
 
       <div className="mt-5 space-y-4">
         <div>
-          <label
-            htmlFor="user-email"
-            className="text-sm font-medium"
-          >
+          <label htmlFor="user-email" className="text-sm font-medium">
             Email
           </label>
 
@@ -152,41 +93,27 @@ export default function UserCreateForm() {
             type="email"
             required
             value={email}
-            onChange={(event) =>
-              setEmail(
-                event.target.value,
-              )
-            }
+            onChange={(event) => setEmail(event.target.value)}
             className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3"
           />
         </div>
 
         <div>
-          <label
-            htmlFor="username"
-            className="text-sm font-medium"
-          >
+          <label htmlFor="username" className="text-sm font-medium">
             Username
           </label>
 
           <input
             id="username"
             value={username}
-            onChange={(event) =>
-              setUsername(
-                event.target.value,
-              )
-            }
+            onChange={(event) => setUsername(event.target.value)}
             placeholder="Opsional"
             className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3"
           />
         </div>
 
         <div>
-          <label
-            htmlFor="user-password"
-            className="text-sm font-medium"
-          >
+          <label htmlFor="user-password" className="text-sm font-medium">
             Password
           </label>
 
@@ -196,24 +123,15 @@ export default function UserCreateForm() {
             required
             minLength={8}
             value={password}
-            onChange={(event) =>
-              setPassword(
-                event.target.value,
-              )
-            }
+            onChange={(event) => setPassword(event.target.value)}
             className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3"
           />
 
-          <p className="mt-1 text-xs text-neutral-500">
-            Minimal 8 karakter.
-          </p>
+          <p className="mt-1 text-xs text-neutral-500">Minimal 8 karakter.</p>
         </div>
 
         <div>
-          <label
-            htmlFor="user-role"
-            className="text-sm font-medium"
-          >
+          <label htmlFor="user-role" className="text-sm font-medium">
             Role
           </label>
 
@@ -221,22 +139,13 @@ export default function UserCreateForm() {
             id="user-role"
             value={role}
             onChange={(event) =>
-              setRole(
-                event.target
-                  .value as
-                  | "ADMIN"
-                  | "LEADER",
-              )
+              setRole(event.target.value as "ADMIN" | "LEADER")
             }
             className="mt-2 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3"
           >
-            <option value="LEADER">
-              Leader
-            </option>
+            <option value="LEADER">Leader</option>
 
-            <option value="ADMIN">
-              Admin
-            </option>
+            <option value="ADMIN">Admin</option>
           </select>
         </div>
 
@@ -245,9 +154,7 @@ export default function UserCreateForm() {
           disabled={loading}
           className="w-full rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50"
         >
-          {loading
-            ? "Menyimpan..."
-            : "Tambah User"}
+          {loading ? "Menyimpan..." : "Tambah User"}
         </button>
       </div>
     </form>

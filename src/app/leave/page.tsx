@@ -6,6 +6,12 @@ import { useSearchParams } from "next/navigation";
 
 import { FormEvent, Suspense, useEffect, useState } from "react";
 
+import BrandLogo from "@/components/BrandLogo";
+
+import { LoadingLabel, LoadingOverlay, Spinner } from "@/components/ui/Loading";
+
+import { useToastFeedback } from "@/components/ui/ToastProvider";
+
 type Employee = {
   employeeCode: string;
   name: string;
@@ -50,9 +56,7 @@ function PublicLeaveContent() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  const [error, setError] = useState("");
-
-  const [success, setSuccess] = useState("");
+  const { setError, setSuccess } = useToastFeedback();
 
   async function lookupEmployee(code: string) {
     const cleanCode = normalizeEmployeeCode(code.trim());
@@ -281,21 +285,24 @@ function PublicLeaveContent() {
           </p>
         </div>
 
-        {error && (
-          <div className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="rounded-xl bg-green-50 p-4 text-sm font-medium text-green-700">
-            {success}
-          </div>
-        )}
+        <LoadingOverlay
+          visible={submitting || templateDownloading}
+          message={
+            templateDownloading
+              ? "Membuat Form Pengajuan Cuti..."
+              : "Mengirim pengajuan..."
+          }
+        />
 
         {lookupLoading && initialEmployeeCode && (
           <div className="rounded-2xl bg-white p-6 text-center shadow-sm">
-            <p className="text-sm text-neutral-500">Memuat data karyawan...</p>
+            <div className="text-blue-600">
+              <Spinner />
+            </div>
+
+            <p className="mt-3 text-sm text-neutral-500">
+              Memuat data karyawan...
+            </p>
           </div>
         )}
 
@@ -504,9 +511,12 @@ function PublicLeaveContent() {
                         }
                         className="mt-4 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
                       >
-                        {templateDownloading
-                          ? "Membuat Form..."
-                          : "Download Form Cuti"}
+                        <LoadingLabel
+                          loading={templateDownloading}
+                          loadingText="Membuat Form..."
+                        >
+                          Download Form Cuti
+                        </LoadingLabel>
                       </button>
 
                       <div className="mt-5 border-t border-blue-200 pt-4">
@@ -595,11 +605,9 @@ function PublicLeaveContent() {
                 }
                 className="mt-5 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50"
               >
-                {submitting
-                  ? "Mengirim..."
-                  : type === "ANNUAL_LEAVE" && !attachment
-                    ? "Upload Form Cuti Terlebih Dahulu"
-                    : "Kirim Pengajuan"}
+                <LoadingLabel loading={submitting} loadingText="Mengirim...">
+                  Kirim Pengajuan
+                </LoadingLabel>
               </button>
             </form>
           </>

@@ -8,6 +8,10 @@ import {
   useRouter,
 } from "next/navigation";
 
+import {
+  useToastFeedback,
+} from "@/components/ui/ToastProvider";
+
 type Props = {
   employeeId: string;
   active: boolean;

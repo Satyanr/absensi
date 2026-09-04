@@ -4,6 +4,8 @@ import { FormEvent, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
+import { useToastFeedback } from "@/components/ui/ToastProvider";
+
 type Employee = {
   id: string;
   employeeCode: string;
@@ -30,9 +32,7 @@ export default function LeaveCreateForm({
 
   const [loading, setLoading] = useState(false);
 
-  const [error, setError] = useState("");
-
-  const [success, setSuccess] = useState("");
+  const { setError, setSuccess } = useToastFeedback();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -94,18 +94,6 @@ export default function LeaveCreateForm({
         Catat izin atau sakit karyawan. Pengajuan Cuti dilakukan oleh pemohon
         melalui halaman publik.
       </p>
-
-      {error && (
-        <div className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mt-4 rounded-xl bg-green-50 p-3 text-sm text-green-700">
-          {success}
-        </div>
-      )}
 
       <div className="mt-5 space-y-4">
         <div>

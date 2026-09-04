@@ -5,6 +5,12 @@ import { FormEvent, useState } from "react";
 
 import SelfieCapture from "@/components/attendance/SelfieCapture";
 
+import BrandLogo from "@/components/BrandLogo";
+
+import { LoadingLabel, LoadingOverlay } from "@/components/ui/Loading";
+
+import { useToastFeedback } from "@/components/ui/ToastProvider";
+
 type AttendanceMode = "OFFICE" | "PROJECT";
 
 type SelfieSource = "WEB_CAMERA" | "WEB_FILE_CAPTURE";
@@ -108,9 +114,7 @@ export default function HomePage() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  const [error, setError] = useState("");
-
-  const [success, setSuccess] = useState("");
+  const { setError, setSuccess } = useToastFeedback();
 
   async function searchEmployee(event: FormEvent) {
     event.preventDefault();
@@ -526,26 +530,32 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-neutral-100 px-4 py-8">
+      <LoadingOverlay
+        visible={locationLoading || submitting || attendanceLoading}
+        message={
+          locationLoading
+            ? "Mengambil GPS dan memeriksa lokasi..."
+            : submitting
+              ? "Mengirim data absensi..."
+              : "Memuat status absensi..."
+        }
+      />
       <div className="mx-auto max-w-md space-y-4">
         <div className="rounded-2xl bg-white p-6 shadow-sm">
-          <h1 className="text-2xl font-bold">Absensi Karyawan</h1>
+          <BrandLogo />
+
+          <div className="mt-5 border-t border-neutral-100 pt-5">
+            <h1 className="text-2xl font-bold">Absensi Karyawan</h1>
+
+            <p className="mt-2 text-sm text-neutral-500">
+              Masukkan kode karyawan untuk memulai absensi.
+            </p>
+          </div>
 
           <p className="mt-2 text-sm text-neutral-500">
             Masukkan kode karyawan untuk memulai absensi.
           </p>
         </div>
-
-        {error && (
-          <div className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="rounded-xl bg-green-50 p-4 text-sm font-medium text-green-700">
-            {success}
-          </div>
-        )}
 
         {!employee && (
           <form
@@ -567,7 +577,9 @@ export default function HomePage() {
               disabled={loading}
               className="mt-4 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white disabled:opacity-50"
             >
-              {loading ? "Mencari..." : "Cari Karyawan"}
+              <LoadingLabel loading={loading} loadingText="Mencari...">
+                Cari Karyawan
+              </LoadingLabel>
             </button>
           </form>
         )}
@@ -878,11 +890,12 @@ export default function HomePage() {
                             : "bg-green-600"
                         }`}
                       >
-                        {submitting
-                          ? "Mengirim Absensi..."
-                          : attendanceMode === "PROJECT"
-                            ? "In Project"
-                            : "Absen Masuk"}
+                        <LoadingLabel
+                          loading={submitting}
+                          loadingText="Mengirim..."
+                        >
+                          Absen Masuk
+                        </LoadingLabel>
                       </button>
                     )}
 

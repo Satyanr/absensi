@@ -1,31 +1,21 @@
 "use client";
 
-import {
-  ChangeEvent,
-  useState,
-} from "react";
+import { ChangeEvent, useState } from "react";
 
-import {
-  useRouter,
-} from "next/navigation";
+import { useRouter } from "next/navigation";
 
-type ReviewAction =
-  | "APPROVE"
-  | "REJECT";
+import { useToastFeedback } from "@/components/ui/ToastProvider";
 
-type LeaveType =
-  | "PERMISSION"
-  | "SICK"
-  | "ANNUAL_LEAVE";
+type ReviewAction = "APPROVE" | "REJECT";
+
+type LeaveType = "PERMISSION" | "SICK" | "ANNUAL_LEAVE";
 
 type Props = {
   leaveRequestId: string;
 
-  leaveType:
-    LeaveType;
+  leaveType: LeaveType;
 
-  hasApprovedDocument:
-    boolean;
+  hasApprovedDocument: boolean;
 };
 
 export default function LeaveReviewActions({
@@ -33,183 +23,92 @@ export default function LeaveReviewActions({
   leaveType,
   hasApprovedDocument,
 }: Props) {
-  const router =
-    useRouter();
+  const router = useRouter();
 
-  const [
-    loadingAction,
-    setLoadingAction,
-  ] =
-    useState<ReviewAction | null>(
-      null
-    );
+  const [loadingAction, setLoadingAction] = useState<ReviewAction | null>(null);
 
-  const [
-    finalDocument,
-    setFinalDocument,
-  ] =
-    useState<File | null>(
-      null
-    );
+  const [finalDocument, setFinalDocument] = useState<File | null>(null);
 
-  const [
-    documentUploading,
-    setDocumentUploading,
-  ] =
-    useState(false);
+  const [documentUploading, setDocumentUploading] = useState(false);
 
-  const [
-    localHasApprovedDocument,
-    setLocalHasApprovedDocument,
-  ] =
-    useState(
-      hasApprovedDocument
-    );
+  const [localHasApprovedDocument, setLocalHasApprovedDocument] =
+    useState(hasApprovedDocument);
 
-  const [
-    fileInputKey,
-    setFileInputKey,
-  ] =
-    useState(0);
+  const [fileInputKey, setFileInputKey] = useState(0);
 
-  const [
-    error,
-    setError,
-  ] =
-    useState("");
+  const { setError, setSuccess } = useToastFeedback();
 
-  const [
-    success,
-    setSuccess,
-  ] =
-    useState("");
+  const isAnnualLeave = leaveType === "ANNUAL_LEAVE";
 
-  const isAnnualLeave =
-    leaveType ===
-    "ANNUAL_LEAVE";
+  const canApprove = !isAnnualLeave || localHasApprovedDocument;
 
-  const canApprove =
-    !isAnnualLeave ||
-    localHasApprovedDocument;
-
-  function selectFinalDocument(
-    event:
-      ChangeEvent<HTMLInputElement>
-  ) {
-    const file =
-      event.target.files?.[0] ??
-      null;
+  function selectFinalDocument(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
 
     setError("");
     setSuccess("");
 
     if (!file) {
-      setFinalDocument(
-        null
-      );
+      setFinalDocument(null);
 
       return;
     }
 
-    const name =
-      file.name
-        .toLowerCase();
+    const name = file.name.toLowerCase();
 
-    const valid =
-      name.endsWith(
-        ".docx"
-      ) ||
-      name.endsWith(
-        ".pdf"
-      );
+    const valid = name.endsWith(".docx") || name.endsWith(".pdf");
 
     if (!valid) {
-      setFinalDocument(
-        null
-      );
+      setFinalDocument(null);
 
-      setError(
-        "Dokumen final harus berupa DOCX atau PDF."
-      );
+      setError("Dokumen final harus berupa DOCX atau PDF.");
 
-      setFileInputKey(
-        (value) =>
-          value + 1
-      );
+      setFileInputKey((value) => value + 1);
 
       return;
     }
 
-    if (
-      file.size >
-      5 * 1024 * 1024
-    ) {
-      setFinalDocument(
-        null
-      );
+    if (file.size > 5 * 1024 * 1024) {
+      setFinalDocument(null);
 
-      setError(
-        "Ukuran dokumen final maksimal 5 MB."
-      );
+      setError("Ukuran dokumen final maksimal 5 MB.");
 
-      setFileInputKey(
-        (value) =>
-          value + 1
-      );
+      setFileInputKey((value) => value + 1);
 
       return;
     }
 
-    setFinalDocument(
-      file
-    );
+    setFinalDocument(file);
   }
 
   async function uploadFinalDocument() {
-    if (
-      !isAnnualLeave ||
-      !finalDocument ||
-      documentUploading
-    ) {
+    if (!isAnnualLeave || !finalDocument || documentUploading) {
       return;
     }
 
-    setDocumentUploading(
-      true
-    );
+    setDocumentUploading(true);
 
     setError("");
     setSuccess("");
 
     try {
-      const form =
-        new FormData();
+      const form = new FormData();
 
-      form.append(
-        "file",
-        finalDocument
+      form.append("file", finalDocument);
+
+      const response = await fetch(
+        `/api/admin/leaves/${leaveRequestId}/approved-document`,
+        {
+          method: "POST",
+
+          body: form,
+        },
       );
 
-      const response =
-        await fetch(
-          `/api/admin/leaves/${leaveRequestId}/approved-document`,
-          {
-            method:
-              "POST",
-
-            body:
-              form,
-          }
-        );
-
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        setError(
-          data.error ??
-            "Gagal mengupload dokumen final."
-        );
+        setError(data.error ?? "Gagal mengupload dokumen final.");
 
         return;
       }
@@ -219,121 +118,78 @@ export default function LeaveReviewActions({
        * tanpa harus menunggu refresh
        * selesai.
        */
-      setLocalHasApprovedDocument(
-        true
-      );
+      setLocalHasApprovedDocument(true);
 
-      setFinalDocument(
-        null
-      );
+      setFinalDocument(null);
 
-      setFileInputKey(
-        (value) =>
-          value + 1
-      );
+      setFileInputKey((value) => value + 1);
 
-      setSuccess(
-        data.message ??
-          "Dokumen final berhasil diupload."
-      );
+      setSuccess(data.message ?? "Dokumen final berhasil diupload.");
 
       router.refresh();
     } catch {
-      setError(
-        "Terjadi masalah jaringan saat mengupload dokumen final."
-      );
+      setError("Terjadi masalah jaringan saat mengupload dokumen final.");
     } finally {
-      setDocumentUploading(
-        false
-      );
+      setDocumentUploading(false);
     }
   }
 
-  async function review(
-    action:
-      ReviewAction
-  ) {
-    if (
-      loadingAction ||
-      documentUploading
-    ) {
+  async function review(action: ReviewAction) {
+    if (loadingAction || documentUploading) {
       return;
     }
 
-    if (
-      action ===
-        "APPROVE" &&
-      !canApprove
-    ) {
+    if (action === "APPROVE" && !canApprove) {
       setError(
-        "Upload dokumen final yang sudah ditandatangani terlebih dahulu."
+        "Upload dokumen final yang sudah ditandatangani terlebih dahulu.",
       );
 
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        action ===
-          "APPROVE"
-          ? isAnnualLeave
-            ? "Setujui pengajuan Cuti ini? Saldo cuti akan diperbarui."
-            : "Setujui pengajuan ini?"
-          : "Tolak pengajuan ini?"
-      );
+    const confirmed = window.confirm(
+      action === "APPROVE"
+        ? isAnnualLeave
+          ? "Setujui pengajuan Cuti ini? Saldo cuti akan diperbarui."
+          : "Setujui pengajuan ini?"
+        : "Tolak pengajuan ini?",
+    );
 
     if (!confirmed) {
       return;
     }
 
-    setLoadingAction(
-      action
-    );
+    setLoadingAction(action);
 
     setError("");
     setSuccess("");
 
     try {
-      const response =
-        await fetch(
-          `/api/admin/leaves/${leaveRequestId}`,
-          {
-            method:
-              "PATCH",
+      const response = await fetch(`/api/admin/leaves/${leaveRequestId}`, {
+        method: "PATCH",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+        headers: {
+          "Content-Type": "application/json",
+        },
 
-            body:
-              JSON.stringify({
-                action,
-              }),
-          }
-        );
+        body: JSON.stringify({
+          action,
+        }),
+      });
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        setError(
-          data.error ??
-            "Gagal memproses pengajuan."
-        );
+        setError(data.error ?? "Gagal memproses pengajuan.");
 
         return;
       }
 
       router.refresh();
     } catch {
-      setError(
-        "Terjadi masalah jaringan."
-      );
+      setError("Terjadi masalah jaringan.");
     } finally {
-      setLoadingAction(
-        null
-      );
+      setLoadingAction(null);
     }
   }
 
@@ -346,54 +202,32 @@ export default function LeaveReviewActions({
           </p>
 
           <p className="mt-1 text-xs leading-5 text-blue-800">
-            Download Form Cuti pemohon,
-            lengkapi tanda tangan Atasan
-            dan HRD, lalu upload kembali
-            sebagai DOCX atau PDF.
+            Download Form Cuti pemohon, lengkapi tanda tangan Atasan dan HRD,
+            lalu upload kembali sebagai DOCX atau PDF.
           </p>
 
           {localHasApprovedDocument && (
             <div className="mt-3 rounded-lg bg-green-100 p-3 text-sm font-medium text-green-800">
-              ✓ Dokumen final sudah tersedia.
-              Anda dapat menggantinya selama
+              ✓ Dokumen final sudah tersedia. Anda dapat menggantinya selama
               pengajuan masih menunggu.
             </div>
           )}
 
           <input
-            key={
-              fileInputKey
-            }
+            key={fileInputKey}
             type="file"
             accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
-            disabled={
-              documentUploading ||
-              loadingAction !==
-                null
-            }
-            onChange={
-              selectFinalDocument
-            }
+            disabled={documentUploading || loadingAction !== null}
+            onChange={selectFinalDocument}
             className="mt-4 block w-full rounded-xl border border-blue-200 bg-white px-3 py-3 text-sm disabled:opacity-50"
           />
 
           {finalDocument && (
             <div className="mt-3 rounded-lg bg-white p-3 text-sm text-neutral-700">
-              <p className="font-medium">
-                {
-                  finalDocument.name
-                }
-              </p>
+              <p className="font-medium">{finalDocument.name}</p>
 
               <p className="mt-1 text-xs text-neutral-500">
-                {(
-                  finalDocument.size /
-                  1024 /
-                  1024
-                ).toFixed(
-                  2
-                )}{" "}
-                MB
+                {(finalDocument.size / 1024 / 1024).toFixed(2)} MB
               </p>
             </div>
           )}
@@ -401,14 +235,9 @@ export default function LeaveReviewActions({
           <button
             type="button"
             disabled={
-              !finalDocument ||
-              documentUploading ||
-              loadingAction !==
-                null
+              !finalDocument || documentUploading || loadingAction !== null
             }
-            onClick={
-              uploadFinalDocument
-            }
+            onClick={uploadFinalDocument}
             className="mt-3 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
           >
             {documentUploading
@@ -420,45 +249,21 @@ export default function LeaveReviewActions({
         </div>
       )}
 
-      {error && (
-        <div className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-          {error}
+      {isAnnualLeave && !canApprove && (
+        <div className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+          Cuti belum dapat disetujui. Upload dokumen final yang sudah
+          ditandatangani terlebih dahulu.
         </div>
       )}
-
-      {success && (
-        <div className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-700">
-          {success}
-        </div>
-      )}
-
-      {isAnnualLeave &&
-        !canApprove && (
-          <div className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
-            Cuti belum dapat disetujui.
-            Upload dokumen final yang sudah
-            ditandatangani terlebih dahulu.
-          </div>
-        )}
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
-          disabled={
-            loadingAction !==
-              null ||
-            documentUploading ||
-            !canApprove
-          }
-          onClick={() =>
-            review(
-              "APPROVE"
-            )
-          }
+          disabled={loadingAction !== null || documentUploading || !canApprove}
+          onClick={() => review("APPROVE")}
           className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {loadingAction ===
-          "APPROVE"
+          {loadingAction === "APPROVE"
             ? "Menyetujui..."
             : isAnnualLeave
               ? "Setujui Cuti"
@@ -467,22 +272,11 @@ export default function LeaveReviewActions({
 
         <button
           type="button"
-          disabled={
-            loadingAction !==
-              null ||
-            documentUploading
-          }
-          onClick={() =>
-            review(
-              "REJECT"
-            )
-          }
+          disabled={loadingAction !== null || documentUploading}
+          onClick={() => review("REJECT")}
           className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
-          {loadingAction ===
-          "REJECT"
-            ? "Menolak..."
-            : "Tolak"}
+          {loadingAction === "REJECT" ? "Menolak..." : "Tolak"}
         </button>
       </div>
     </div>

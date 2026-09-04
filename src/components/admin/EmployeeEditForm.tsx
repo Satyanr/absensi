@@ -9,6 +9,10 @@ import {
   useRouter,
 } from "next/navigation";
 
+import {
+  useToastFeedback,
+} from "@/components/ui/ToastProvider";
+
 type Employee = {
   id: string;
   employeeCode: string;
@@ -69,15 +73,11 @@ export default function EmployeeEditForm({
     setLoading,
   ] = useState(false);
 
-  const [
-    error,
-    setError,
-  ] = useState("");
-
-  const [
-    success,
-    setSuccess,
-  ] = useState("");
+const {
+  setError,
+  setSuccess,
+} =
+  useToastFeedback();
 
   async function submit(
     event: FormEvent
@@ -156,18 +156,6 @@ export default function EmployeeEditForm({
       <h2 className="text-lg font-semibold">
         Edit Karyawan
       </h2>
-
-      {error && (
-        <div className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mt-4 rounded-xl bg-green-50 p-3 text-sm text-green-700">
-          {success}
-        </div>
-      )}
 
       <div className="mt-5 space-y-4">
         <Field
