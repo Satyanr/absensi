@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
       employeeCode: true,
       name: true,
       employmentType: true,
+      leaveEligible: true,
     },
   });
 
@@ -63,6 +64,14 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    employee,
+    employee: {
+      employeeCode: employee.employeeCode,
+
+      name: employee.name,
+
+      employmentType: employee.employmentType,
+
+      canRequestAnnualLeave: employee.leaveEligible,
+    },
   });
 }
