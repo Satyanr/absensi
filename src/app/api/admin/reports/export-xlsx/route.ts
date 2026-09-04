@@ -390,6 +390,28 @@ export async function GET(request: NextRequest) {
 
   const requestedMode = searchParams.get("mode");
 
+  const requestedEmploymentType = searchParams.get("employmentType");
+
+  let employmentType: "EMPLOYEE" | "INTERN" | null = null;
+
+  if (requestedEmploymentType) {
+    if (
+      requestedEmploymentType !== "EMPLOYEE" &&
+      requestedEmploymentType !== "INTERN"
+    ) {
+      return NextResponse.json(
+        {
+          error: "Jenis personel tidak valid.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    employmentType = requestedEmploymentType;
+  }
+
   if (!from || !to || !isValidDateInput(from) || !isValidDateInput(to)) {
     return NextResponse.json(
       {
@@ -477,6 +499,14 @@ export async function GET(request: NextRequest) {
 
         lte: toDate,
       },
+
+      ...(employmentType
+        ? {
+            employee: {
+              employmentType,
+            },
+          }
+        : {}),
 
       ...(employeeId
         ? {
@@ -577,6 +607,14 @@ export async function GET(request: NextRequest) {
           endDate: {
             gte: fromDate,
           },
+
+          ...(employmentType
+            ? {
+                employee: {
+                  employmentType,
+                },
+              }
+            : {}),
 
           ...(employeeId
             ? {
@@ -861,7 +899,7 @@ export async function GET(request: NextRequest) {
 
   const titleCell = worksheet.getCell("A1");
 
-  titleCell.value = "LAPORAN ABSENSI KARYAWAN";
+  titleCell.value = "LAPORAN ABSENSI PERSONEL";
 
   titleCell.font = {
     bold: true,
@@ -884,10 +922,16 @@ export async function GET(request: NextRequest) {
 
   worksheet.mergeCells("A3:O3");
 
-  worksheet.getCell("A3").value = `Karyawan: ${
+  worksheet.getCell("A3").value = `Jenis Personel: ${
+    employmentType === "EMPLOYEE"
+      ? "Karyawan"
+      : employmentType === "INTERN"
+        ? "Magang"
+        : "Semua Personel"
+  } | Personel: ${
     selectedEmployee
       ? `${selectedEmployee.employeeCode} - ${selectedEmployee.name}`
-      : "Semua Karyawan"
+      : "Semua Personel"
   }`;
 
   worksheet.mergeCells("A4:O4");

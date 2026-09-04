@@ -24,7 +24,7 @@ const navigation = [
   {
     href: "/admin/employees",
 
-    label: "Karyawan",
+    label: "Personel",
 
     roles: ["ADMIN", "LEADER"],
   },
@@ -73,7 +73,7 @@ export default function AdminNavigationClient({ role }: Props) {
         <div>
           <BrandLogo href="/admin/dashboard" />
 
-          <p className="text-xs text-neutral-500">Sistem Absensi Karyawan</p>
+          <p className="text-xs text-neutral-500">Sistem Absensi</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

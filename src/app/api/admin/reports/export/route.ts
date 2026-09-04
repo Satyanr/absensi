@@ -205,6 +205,8 @@ export async function GET(request: NextRequest) {
 
   const requestedMode = searchParams.get("mode");
 
+  const requestedEmploymentType = searchParams.get("employmentType");
+
   if (!from || !to || !isValidDateInput(from) || !isValidDateInput(to)) {
     return NextResponse.json(
       {
@@ -214,6 +216,26 @@ export async function GET(request: NextRequest) {
         status: 400,
       },
     );
+  }
+
+  let employmentType: "EMPLOYEE" | "INTERN" | null = null;
+
+  if (requestedEmploymentType) {
+    if (
+      requestedEmploymentType !== "EMPLOYEE" &&
+      requestedEmploymentType !== "INTERN"
+    ) {
+      return NextResponse.json(
+        {
+          error: "Jenis personel tidak valid.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    employmentType = requestedEmploymentType;
   }
 
   const fromDate = new Date(`${from}T00:00:00.000Z`);
@@ -293,6 +315,14 @@ export async function GET(request: NextRequest) {
         lte: toDate,
       },
 
+      ...(employmentType
+        ? {
+            employee: {
+              employmentType,
+            },
+          }
+        : {}),
+
       ...(employeeId
         ? {
             employeeId,
@@ -367,6 +397,14 @@ export async function GET(request: NextRequest) {
           endDate: {
             gte: fromDate,
           },
+
+          ...(employmentType
+            ? {
+                employee: {
+                  employmentType,
+                },
+              }
+            : {}),
 
           ...(employeeId
             ? {
@@ -554,6 +592,10 @@ export async function GET(request: NextRequest) {
 
   if (mode) {
     filenameParts.push(mode === "PROJECT" ? "in-project" : "kantor");
+  }
+
+  if (employmentType) {
+    filenameParts.push(employmentType === "INTERN" ? "magang" : "karyawan");
   }
 
   const filename = `${filenameParts.join("-")}.csv`;

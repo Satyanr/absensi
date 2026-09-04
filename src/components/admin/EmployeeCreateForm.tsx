@@ -104,10 +104,10 @@ export default function EmployeeCreateForm() {
       className="rounded-2xl bg-white p-5 shadow-sm"
     >
       <div>
-        <h2 className="text-lg font-semibold">Tambah Karyawan</h2>
+        <h2 className="text-lg font-semibold">Tambah Personel</h2>
 
         <p className="mt-1 text-sm text-neutral-500">
-          Tambahkan karyawan baru ke sistem absensi.
+          Tambahkan karyawan atau magang baru ke sistem absensi.
         </p>
       </div>
 

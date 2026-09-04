@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { expandApprovedLeaveRows } from "@/lib/reports/leave";
 
 type AttendanceModeFilter = "ALL" | "OFFICE" | "PROJECT";
+type EmploymentTypeFilter = "ALL" | "EMPLOYEE" | "INTERN";
 
 type Props = {
   searchParams: Promise<{
@@ -16,6 +17,7 @@ type Props = {
     to?: string | string[];
     employeeId?: string | string[];
     mode?: string | string[];
+    employmentType?: string | string[];
   }>;
 };
 
@@ -155,27 +157,40 @@ export default async function ReportsPage({ searchParams }: Props) {
 
   /*
    * =========================
-   * FILTER KARYAWAN
+   * FILTER JENIS PERSONEL
+   * =========================
+   */
+
+  const requestedEmploymentType =
+    typeof params.employmentType === "string" ? params.employmentType : "";
+
+  const selectedEmploymentType: EmploymentTypeFilter =
+    requestedEmploymentType === "EMPLOYEE" ||
+    requestedEmploymentType === "INTERN"
+      ? requestedEmploymentType
+      : "ALL";
+
+  /*
+   * =========================
+   * FILTER PERSONEL
    * =========================
    */
 
   const requestedEmployee =
     typeof params.employeeId === "string" ? params.employeeId : "";
 
-  const selectedEmployeeId = requestedEmployee || "ALL";
-
-  /*
-   * Semua employee tetap
-   * ditampilkan di filter,
-   * termasuk yang sudah nonaktif.
-   *
-   * Ini penting untuk laporan
-   * historis.
-   */
   const employees = await prisma.employee.findMany({
+    where:
+      selectedEmploymentType !== "ALL"
+        ? {
+            employmentType: selectedEmploymentType,
+          }
+        : undefined,
+
     select: {
       id: true,
       employeeCode: true,
+      employmentType: true,
       name: true,
       active: true,
     },
@@ -184,6 +199,18 @@ export default async function ReportsPage({ searchParams }: Props) {
       name: "asc",
     },
   });
+
+  /*
+   * Jika user mengganti filter
+   * Karyawan -> Magang sementara
+   * employee sebelumnya adalah
+   * Karyawan, otomatis kembali ALL.
+   */
+  const selectedEmployeeId =
+    requestedEmployee &&
+    employees.some((employee) => employee.id === requestedEmployee)
+      ? requestedEmployee
+      : "ALL";
 
   /*
    * =========================
@@ -197,6 +224,7 @@ export default async function ReportsPage({ searchParams }: Props) {
     requestedMode === "OFFICE" || requestedMode === "PROJECT"
       ? requestedMode
       : "ALL";
+      
 
   /*
    * =========================
@@ -212,6 +240,14 @@ export default async function ReportsPage({ searchParams }: Props) {
             gte: fromDate,
             lte: toDate,
           },
+
+          ...(selectedEmploymentType !== "ALL"
+            ? {
+                employee: {
+                  employmentType: selectedEmploymentType,
+                },
+              }
+            : {}),
 
           ...(selectedEmployeeId !== "ALL"
             ? {
@@ -325,6 +361,14 @@ export default async function ReportsPage({ searchParams }: Props) {
             endDate: {
               gte: fromDate,
             },
+
+            ...(selectedEmploymentType !== "ALL"
+              ? {
+                  employee: {
+                    employmentType: selectedEmploymentType,
+                  },
+                }
+              : {}),
 
             ...(selectedEmployeeId !== "ALL"
               ? {
@@ -480,6 +524,10 @@ export default async function ReportsPage({ searchParams }: Props) {
     to: toInput,
   });
 
+  if (selectedEmploymentType !== "ALL") {
+    exportParams.set("employmentType", selectedEmploymentType);
+  }
+
   if (selectedEmployeeId !== "ALL") {
     exportParams.set("employeeId", selectedEmployeeId);
   }
@@ -514,7 +562,7 @@ export default async function ReportsPage({ searchParams }: Props) {
         <section className="mt-6 rounded-2xl bg-white p-5 shadow-sm">
           <form
             method="get"
-            className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4"
+            className="grid gap-4 md:grid-cols-2 xl:grid-cols-5"
           >
             {/* FROM */}
             <div>
@@ -546,10 +594,29 @@ export default async function ReportsPage({ searchParams }: Props) {
               />
             </div>
 
+            <div>
+              <label htmlFor="employmentType" className="text-sm font-medium">
+                Jenis Personel
+              </label>
+
+              <select
+                id="employmentType"
+                name="employmentType"
+                defaultValue={selectedEmploymentType}
+                className="mt-2 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3"
+              >
+                <option value="ALL">Semua Personel</option>
+
+                <option value="EMPLOYEE">Karyawan</option>
+
+                <option value="INTERN">Magang</option>
+              </select>
+            </div>
+
             {/* EMPLOYEE */}
             <div>
               <label htmlFor="employeeId" className="text-sm font-medium">
-                Karyawan
+                Personel
               </label>
 
               <select
@@ -558,11 +625,17 @@ export default async function ReportsPage({ searchParams }: Props) {
                 defaultValue={selectedEmployeeId}
                 className="mt-2 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3"
               >
-                <option value="ALL">Semua Karyawan</option>
+                <option value="ALL">Semua Personel</option>
 
                 {employees.map((employee) => (
                   <option key={employee.id} value={employee.id}>
-                    {employee.employeeCode} - {employee.name}
+                    {employee.employeeCode}
+                    {" - "}
+                    {employee.name}
+                    {" · "}
+                    {employee.employmentType === "INTERN"
+                      ? "Magang"
+                      : "Karyawan"}
                     {!employee.active ? " (Nonaktif)" : ""}
                   </option>
                 ))}
@@ -621,7 +694,7 @@ export default async function ReportsPage({ searchParams }: Props) {
                 Data yang ditampilkan
               </p>
 
-              <div className="mt-3 grid gap-3 text-sm md:grid-cols-3">
+              <div className="mt-3 grid gap-3 text-sm md:grid-cols-4">
                 <div>
                   <p className="text-neutral-500">Periode</p>
 
@@ -633,12 +706,24 @@ export default async function ReportsPage({ searchParams }: Props) {
                 </div>
 
                 <div>
-                  <p className="text-neutral-500">Karyawan</p>
+                  <p className="text-neutral-500">Jenis Personel</p>
+
+                  <p className="font-semibold">
+                    {selectedEmploymentType === "EMPLOYEE"
+                      ? "Karyawan"
+                      : selectedEmploymentType === "INTERN"
+                        ? "Magang"
+                        : "Semua Personel"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-neutral-500">Personel</p>
 
                   <p className="font-semibold">
                     {selectedEmployee
                       ? `${selectedEmployee.employeeCode} - ${selectedEmployee.name}`
-                      : "Semua Karyawan"}
+                      : "Semua Personel"}
                   </p>
                 </div>
 
@@ -676,7 +761,7 @@ export default async function ReportsPage({ searchParams }: Props) {
             <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5 xl:grid-cols-10">
               <SummaryCard title="Hari Hadir" value={totalAttendance} />
 
-              <SummaryCard title="Karyawan" value={totalEmployees} />
+              <SummaryCard title="Personel" value={totalEmployees} />
 
               <SummaryCard title="Kantor" value={totalOffice} />
 
