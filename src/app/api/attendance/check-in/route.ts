@@ -27,25 +27,6 @@ import { findNearestAttendanceLocation } from "@/lib/attendance/geofence";
 
 class DuplicateCheckInError extends Error {}
 
-function getExtension(mimeType: string) {
-  switch (mimeType) {
-    case "image/png":
-      return ".png";
-
-    case "image/webp":
-      return ".webp";
-
-    case "image/heic":
-      return ".heic";
-
-    case "image/heif":
-      return ".heif";
-
-    default:
-      return ".jpg";
-  }
-}
-
 function getMaxAccuracy() {
   const value = Number(process.env.MAX_OFFICE_GPS_ACCURACY_METERS ?? 500);
 
@@ -391,24 +372,19 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let serverAddress:
-  string | null = null;
+  let serverAddress: string | null = null;
 
-if (
-  parsed.data.latitude !==
-    undefined &&
-  parsed.data.longitude !==
-    undefined
-) {
-  const geocode =
-    await reverseGeocodeCoordinates(
+  if (
+    parsed.data.latitude !== undefined &&
+    parsed.data.longitude !== undefined
+  ) {
+    const geocode = await reverseGeocodeCoordinates(
       parsed.data.latitude,
       parsed.data.longitude,
     );
 
-  serverAddress =
-    geocode.address;
-}
+    serverAddress = geocode.address;
+  }
 
   /*
    * Persiapkan selfie.
@@ -613,11 +589,9 @@ if (
 
             locationAccuracy: parsed.data.accuracy ?? null,
 
-            locationCapturedAt: parsed.data.locationCapturedAt
-              ? new Date(parsed.data.locationCapturedAt)
-              : null,
+            locationCapturedAt,
 
-            address: parsed.data.address ?? null,
+            address: serverAddress,
 
             outsideGeofence: isProject ? null : false,
 
@@ -631,6 +605,14 @@ if (
               userAgent: request.headers.get("user-agent"),
 
               forwardedFor: request.headers.get("x-forwarded-for"),
+
+              locationIntegrity: {
+                addressSource: serverAddress
+                  ? "SERVER_GEOAPIFY"
+                  : "UNAVAILABLE",
+
+                gpsAgeSeconds,
+              },
 
               geofence: geofence
                 ? {

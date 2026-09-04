@@ -70,41 +70,62 @@ export const checkInSchema = z
     source: attendanceSourceSchema,
   })
   .superRefine((data, ctx) => {
+    const gpsProvided =
+      data.latitude !== undefined ||
+      data.longitude !== undefined ||
+      data.accuracy !== undefined ||
+      Boolean(data.locationCapturedAt);
+
     /*
-     * Hanya OFFICE yang wajib GPS.
+     * OFFICE selalu wajib GPS.
+     *
+     * PROJECT boleh tanpa GPS.
+     * Tetapi kalau salah satu
+     * data GPS dikirim, semuanya
+     * harus lengkap.
      */
-    if (data.attendanceMode !== "OFFICE") {
+    const gpsRequired = data.attendanceMode === "OFFICE" || gpsProvided;
+
+    if (!gpsRequired) {
       return;
     }
 
     if (data.latitude === undefined) {
       ctx.addIssue({
         code: "custom",
+
         path: ["latitude"],
-        message: "Lokasi wajib untuk absensi kantor.",
+
+        message: "Latitude lokasi wajib.",
       });
     }
 
     if (data.longitude === undefined) {
       ctx.addIssue({
         code: "custom",
+
         path: ["longitude"],
-        message: "Lokasi wajib untuk absensi kantor.",
+
+        message: "Longitude lokasi wajib.",
       });
     }
 
     if (data.accuracy === undefined) {
       ctx.addIssue({
         code: "custom",
+
         path: ["accuracy"],
-        message: "Akurasi lokasi wajib untuk absensi kantor.",
+
+        message: "Akurasi lokasi wajib.",
       });
     }
 
     if (!data.locationCapturedAt) {
       ctx.addIssue({
         code: "custom",
+
         path: ["locationCapturedAt"],
+
         message: "Waktu pengambilan lokasi wajib.",
       });
     }

@@ -263,7 +263,11 @@ export default function HomePage() {
 
           accuracy: position.coords.accuracy,
 
-          capturedAt: new Date().toISOString(),
+          capturedAt: new Date(
+            Number.isFinite(position.timestamp) && position.timestamp > 0
+              ? position.timestamp
+              : Date.now(),
+          ).toISOString(),
 
           address,
 
@@ -352,10 +356,6 @@ export default function HomePage() {
         form.append("accuracy", String(location.accuracy));
 
         form.append("locationCapturedAt", location.capturedAt);
-
-        if (location.address) {
-          form.append("address", location.address);
-        }
       }
 
       form.append("clientCapturedAt", new Date().toISOString());
@@ -429,10 +429,6 @@ export default function HomePage() {
       form.append("locationCapturedAt", location.capturedAt);
 
       form.append("clientCapturedAt", new Date().toISOString());
-
-      if (location.address) {
-        form.append("address", location.address);
-      }
 
       form.append("source", selfieSource);
 

@@ -23,25 +23,6 @@ class DuplicateCheckOutError extends Error {}
 
 class MissingCheckInError extends Error {}
 
-function getExtension(mimeType: string) {
-  switch (mimeType) {
-    case "image/png":
-      return ".png";
-
-    case "image/webp":
-      return ".webp";
-
-    case "image/heic":
-      return ".heic";
-
-    case "image/heif":
-      return ".heif";
-
-    default:
-      return ".jpg";
-  }
-}
-
 export async function POST(request: NextRequest) {
   /*
    * Ini waktu resmi.
@@ -76,6 +57,23 @@ export async function POST(request: NextRequest) {
 
       {
         status: 400,
+      },
+    );
+  }
+
+  const gpsFreshness = validateGpsFreshness(
+    parsed.data.locationCapturedAt,
+
+    serverReceivedAt,
+  );
+
+  if (!gpsFreshness.ok) {
+    return NextResponse.json(
+      {
+        error: gpsFreshness.message,
+      },
+      {
+        status: gpsFreshness.reason === "INVALID" ? 400 : 409,
       },
     );
   }
@@ -185,6 +183,15 @@ export async function POST(request: NextRequest) {
       },
     );
   }
+
+  const geocode =
+  await reverseGeocodeCoordinates(
+    parsed.data.latitude,
+    parsed.data.longitude,
+  );
+
+const serverAddress =
+  geocode.address;
 
   /*
    * Persiapkan foto checkout.
