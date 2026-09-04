@@ -38,12 +38,6 @@ const optionalDateTime = z.preprocess(
   z.string().datetime().optional(),
 );
 
-const optionalAddress = z.preprocess(
-  (value) => (value === null || value === "" ? undefined : value),
-
-  z.string().trim().max(500).optional(),
-);
-
 /*
  * CHECK-IN
  *
@@ -70,8 +64,6 @@ export const checkInSchema = z
     accuracy: optionalAccuracy,
 
     locationCapturedAt: optionalDateTime,
-
-    address: optionalAddress,
 
     clientCapturedAt: z.string().datetime(),
 
@@ -133,8 +125,6 @@ export const checkOutSchema = z.object({
   accuracy: z.coerce.number().min(0).max(10000),
 
   locationCapturedAt: z.string().datetime(),
-
-  address: optionalAddress,
 
   clientCapturedAt: z.string().datetime(),
 

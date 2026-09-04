@@ -15,6 +15,10 @@ import { checkOutSchema } from "@/lib/validation/attendance";
 
 import { detectImageFile } from "@/lib/security/file-signature";
 
+import { validateGpsFreshness } from "@/lib/attendance/location-security";
+
+import { reverseGeocodeCoordinates } from "@/lib/attendance/reverse-geocode";
+
 class DuplicateCheckOutError extends Error {}
 
 class MissingCheckInError extends Error {}
@@ -58,8 +62,6 @@ export async function POST(request: NextRequest) {
     locationCapturedAt: form.get("locationCapturedAt"),
 
     clientCapturedAt: form.get("clientCapturedAt"),
-
-    address: form.get("address"),
 
     source: form.get("source"),
   });
@@ -348,9 +350,9 @@ export async function POST(request: NextRequest) {
 
           locationAccuracy: parsed.data.accuracy,
 
-          locationCapturedAt: new Date(parsed.data.locationCapturedAt),
+          locationCapturedAt: gpsFreshness.capturedAt,
 
-          address: parsed.data.address ?? null,
+          address: serverAddress,
 
           photoId: attachment.id,
 
@@ -360,6 +362,12 @@ export async function POST(request: NextRequest) {
             userAgent: request.headers.get("user-agent"),
 
             forwardedFor: request.headers.get("x-forwarded-for"),
+
+            locationIntegrity: {
+              addressSource: serverAddress ? "SERVER_GEOAPIFY" : "UNAVAILABLE",
+
+              gpsAgeSeconds: gpsFreshness.ageSeconds,
+            },
           },
         },
       });

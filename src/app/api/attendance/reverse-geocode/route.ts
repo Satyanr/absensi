@@ -4,6 +4,10 @@ import {
 
 import { z } from "zod";
 
+import {
+  reverseGeocodeCoordinates,
+} from "@/lib/attendance/reverse-geocode";
+
 export const runtime =
   "nodejs";
 
@@ -82,29 +86,34 @@ export async function POST(
     );
   }
 
-  const apiKey =
-    process.env
-      .GEOAPIFY_API_KEY;
+  const result =
+  await reverseGeocodeCoordinates(
+    parsed.data.latitude,
+    parsed.data.longitude,
+  );
 
   /*
    * Alamat hanya informasi tambahan.
    * Absensi/geofence jangan gagal
    * hanya karena API key belum ada.
    */
-  if (!apiKey) {
-    return NextResponse.json(
-      {
-        ok: true,
-        address: null,
-      },
-      {
-        headers: {
-          "Cache-Control":
-            "no-store",
-        },
-      },
-    );
-  }
+  return NextResponse.json(
+  {
+    ok: true,
+
+    address:
+      result.address,
+
+    details:
+      result.details,
+  },
+  {
+    headers: {
+      "Cache-Control":
+        "no-store",
+    },
+  },
+);
 
   try {
     const params =

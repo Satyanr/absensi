@@ -3,6 +3,9 @@ import path from "node:path";
 
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { detectImageFile } from "@/lib/security/file-signature";
+import { validateGpsFreshness } from "@/lib/attendance/location-security";
+
+import { reverseGeocodeCoordinates } from "@/lib/attendance/reverse-geocode";
 
 import {
   AttendanceDayStatus,
@@ -76,8 +79,6 @@ export async function POST(request: NextRequest) {
     locationCapturedAt: form.get("locationCapturedAt"),
 
     clientCapturedAt: form.get("clientCapturedAt"),
-
-    address: form.get("address"),
 
     source: form.get("source"),
   });
@@ -164,6 +165,33 @@ export async function POST(request: NextRequest) {
       : AttendanceMode.OFFICE;
 
   const isProject = attendanceMode === AttendanceMode.PROJECT;
+
+  let locationCapturedAt: Date | null = null;
+
+  let gpsAgeSeconds: number | null = null;
+
+  if (parsed.data.locationCapturedAt) {
+    const freshness = validateGpsFreshness(
+      parsed.data.locationCapturedAt,
+
+      serverReceivedAt,
+    );
+
+    if (!freshness.ok) {
+      return NextResponse.json(
+        {
+          error: freshness.message,
+        },
+        {
+          status: freshness.reason === "INVALID" ? 400 : 409,
+        },
+      );
+    }
+
+    locationCapturedAt = freshness.capturedAt;
+
+    gpsAgeSeconds = freshness.ageSeconds;
+  }
 
   const MAX_ACCURACY = getMaxAccuracy();
 
@@ -362,6 +390,25 @@ export async function POST(request: NextRequest) {
       );
     }
   }
+
+  let serverAddress:
+  string | null = null;
+
+if (
+  parsed.data.latitude !==
+    undefined &&
+  parsed.data.longitude !==
+    undefined
+) {
+  const geocode =
+    await reverseGeocodeCoordinates(
+      parsed.data.latitude,
+      parsed.data.longitude,
+    );
+
+  serverAddress =
+    geocode.address;
+}
 
   /*
    * Persiapkan selfie.
