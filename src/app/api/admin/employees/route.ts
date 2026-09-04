@@ -63,13 +63,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const prefix = parsed.data.employmentType === "INTERN" ? "MAG" : "EMP";
+
+  const employeeCode = `${prefix}${parsed.data.codeNumber}`;
+
   /*
    * Cek kode karyawan.
    */
   const existingCode = await prisma.employee.findFirst({
     where: {
       employeeCode: {
-        equals: parsed.data.employeeCode,
+        equals: employeeCode,
 
         mode: "insensitive",
       },
@@ -124,7 +128,9 @@ export async function POST(request: NextRequest) {
   try {
     const employee = await prisma.employee.create({
       data: {
-        employeeCode: parsed.data.employeeCode,
+        employeeCode,
+
+        employmentType: parsed.data.employmentType,
 
         name: parsed.data.name,
 
@@ -136,7 +142,9 @@ export async function POST(request: NextRequest) {
           ? new Date(`${parsed.data.joinDate}T00:00:00.000Z`)
           : null,
 
-        leaveEligible: parsed.data.leaveEligible,
+        leaveEligible:
+          parsed.data.leaveEligible ??
+          parsed.data.employmentType === "EMPLOYEE",
 
         active: true,
       },
@@ -153,7 +161,10 @@ export async function POST(request: NextRequest) {
       {
         ok: true,
 
-        message: "Karyawan berhasil ditambahkan.",
+        message:
+          parsed.data.employmentType === "INTERN"
+            ? "Magang berhasil ditambahkan."
+            : "Karyawan berhasil ditambahkan.",
 
         employee,
       },

@@ -136,3 +136,11 @@ export const NotificationStatus = {
 } as const
 
 export type NotificationStatus = (typeof NotificationStatus)[keyof typeof NotificationStatus]
+
+
+export const EmploymentType = {
+  EMPLOYEE: 'EMPLOYEE',
+  INTERN: 'INTERN'
+} as const
+
+export type EmploymentType = (typeof EmploymentType)[keyof typeof EmploymentType]

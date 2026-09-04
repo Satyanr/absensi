@@ -10,6 +10,7 @@ import { LoadingLabel } from "@/components/ui/Loading";
 type Employee = {
   id: string;
   employeeCode: string;
+  employmentType: "EMPLOYEE" | "INTERN";
   name: string;
   email: string | null;
   phone: string | null;
@@ -21,6 +22,8 @@ export default function EmployeeEditForm({ employee }: { employee: Employee }) {
   const router = useRouter();
 
   const [employeeCode, setEmployeeCode] = useState(employee.employeeCode);
+
+  const [employmentType, setEmploymentType] = useState(employee.employmentType);
 
   const [name, setName] = useState(employee.name);
 
@@ -57,6 +60,7 @@ export default function EmployeeEditForm({ employee }: { employee: Employee }) {
 
         body: JSON.stringify({
           employeeCode,
+          employmentType,
           name,
 
           email: email || null,
@@ -97,6 +101,22 @@ export default function EmployeeEditForm({ employee }: { employee: Employee }) {
           value={employeeCode}
           onChange={setEmployeeCode}
         />
+
+        <div>
+          <label className="text-sm font-medium">Jenis Personel</label>
+
+          <select
+            value={employmentType}
+            onChange={(event) =>
+              setEmploymentType(event.target.value as "EMPLOYEE" | "INTERN")
+            }
+            className="mt-2 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3"
+          >
+            <option value="EMPLOYEE">Karyawan</option>
+
+            <option value="INTERN">Magang</option>
+          </select>
+        </div>
 
         <Field label="Nama" value={name} onChange={setName} />
 

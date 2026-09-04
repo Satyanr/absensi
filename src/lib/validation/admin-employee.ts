@@ -19,18 +19,16 @@ const optionalJoinDate = z.preprocess(
 );
 
 export const createEmployeeSchema = z.object({
-  employeeCode: z
+  employmentType: z.enum(["EMPLOYEE", "INTERN"]),
+
+  codeNumber: z
     .string()
     .trim()
-    .min(1, "Kode karyawan wajib diisi.")
-    .max(50)
-    .regex(
-      /^[A-Za-z0-9_-]+$/,
-      "Kode hanya boleh berisi huruf, angka, - atau _.",
-    )
-    .transform((value) => value.toUpperCase()),
+    .min(1, "Nomor kode wajib diisi.")
+    .max(10)
+    .regex(/^\d+$/, "Nomor kode hanya boleh berisi angka."),
 
-  name: z.string().trim().min(2, "Nama karyawan wajib diisi.").max(120),
+  name: z.string().trim().min(2, "Nama wajib diisi.").max(120),
 
   email: optionalEmail,
 
@@ -38,7 +36,7 @@ export const createEmployeeSchema = z.object({
 
   joinDate: optionalJoinDate,
 
-  leaveEligible: z.boolean().default(true),
+  leaveEligible: z.boolean().optional(),
 });
 
 const nullableEmail = z.preprocess((value) => {
@@ -84,6 +82,8 @@ export const updateEmployeeSchema = z
       )
       .transform((value) => value.toUpperCase())
       .optional(),
+
+    employmentType: z.enum(["EMPLOYEE", "INTERN"]).optional(),
 
     name: z.string().trim().min(2, "Nama wajib diisi.").max(120).optional(),
 

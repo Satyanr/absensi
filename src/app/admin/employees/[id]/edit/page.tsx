@@ -37,6 +37,7 @@ export default async function EmployeeEditPage({ params }: Props) {
     select: {
       id: true,
       employeeCode: true,
+      employmentType: true,
       name: true,
       email: true,
       phone: true,
@@ -69,6 +70,7 @@ export default async function EmployeeEditPage({ params }: Props) {
               employee={{
                 id: employee.id,
                 employeeCode: employee.employeeCode,
+                employmentType: employee.employmentType,
                 name: employee.name,
                 email: employee.email,
                 phone: employee.phone,

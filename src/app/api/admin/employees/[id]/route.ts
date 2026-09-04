@@ -14,6 +14,7 @@ type RouteContext = {
 
 function employeeForAudit(employee: {
   employeeCode: string;
+  employmentType: "EMPLOYEE" | "INTERN";
   name: string;
   email: string | null;
   phone: string | null;
@@ -23,6 +24,8 @@ function employeeForAudit(employee: {
 }) {
   return {
     employeeCode: employee.employeeCode,
+
+    employmentType: employee.employmentType,
 
     name: employee.name,
 
@@ -73,6 +76,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     select: {
       id: true,
       employeeCode: true,
+      employmentType: true,
       name: true,
       email: true,
       phone: true,
@@ -133,6 +137,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         data: {
           employeeCode: parsed.data.employeeCode,
 
+          employmentType: parsed.data.employmentType,
+
           name: parsed.data.name,
 
           email: parsed.data.email,
@@ -154,6 +160,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         select: {
           id: true,
           employeeCode: true,
+          employmentType: true,
           name: true,
           email: true,
           phone: true,

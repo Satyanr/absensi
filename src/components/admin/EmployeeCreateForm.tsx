@@ -11,7 +11,14 @@ import { LoadingLabel } from "@/components/ui/Loading";
 export default function EmployeeCreateForm() {
   const router = useRouter();
 
-  const [employeeCode, setEmployeeCode] = useState("");
+  type EmploymentType = "EMPLOYEE" | "INTERN";
+
+  const [employmentType, setEmploymentType] =
+    useState<EmploymentType>("EMPLOYEE");
+
+  const [codeNumber, setCodeNumber] = useState("");
+
+  const codePrefix = employmentType === "INTERN" ? "MAG" : "EMP";
 
   const [name, setName] = useState("");
 
@@ -47,7 +54,8 @@ export default function EmployeeCreateForm() {
         },
 
         body: JSON.stringify({
-          employeeCode,
+          employmentType,
+          codeNumber,
           name,
           email,
           phone,
@@ -69,7 +77,7 @@ export default function EmployeeCreateForm() {
       /*
        * Kosongkan form.
        */
-      setEmployeeCode("");
+      setCodeNumber("");
       setName("");
       setEmail("");
       setPhone("");
@@ -104,15 +112,55 @@ export default function EmployeeCreateForm() {
 
       <div className="mt-5 space-y-4">
         <div>
-          <label className="text-sm font-medium">Kode Karyawan</label>
+          <label className="text-sm font-medium">Jenis Personel</label>
 
-          <input
-            value={employeeCode}
-            onChange={(event) => setEmployeeCode(event.target.value)}
-            placeholder="Contoh: EMP003"
-            autoComplete="off"
-            className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none focus:border-blue-500"
-          />
+          <select
+            value={employmentType}
+            onChange={(event) => {
+              const next = event.target.value as EmploymentType;
+
+              setEmploymentType(next);
+
+              setLeaveEligible(next === "EMPLOYEE");
+            }}
+            className="mt-2 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3"
+          >
+            <option value="EMPLOYEE">Karyawan</option>
+
+            <option value="INTERN">Magang</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Kode</label>
+
+          <div className="mt-2 flex overflow-hidden rounded-xl border border-neutral-300 focus-within:border-blue-500">
+            <div className="flex min-w-[72px] items-center justify-center border-r border-neutral-300 bg-neutral-100 px-4 font-bold text-neutral-600">
+              {codePrefix}
+            </div>
+
+            <input
+              value={codeNumber}
+              onChange={(event) =>
+                setCodeNumber(
+                  event.target.value.replace(/\D/g, "").slice(0, 10),
+                )
+              }
+              required
+              inputMode="numeric"
+              placeholder="001"
+              autoComplete="off"
+              className="min-w-0 flex-1 px-4 py-3 outline-none"
+            />
+          </div>
+
+          <p className="mt-1 text-xs text-neutral-500">
+            Kode:{" "}
+            <span className="font-semibold">
+              {codePrefix}
+              {codeNumber || "___"}
+            </span>
+          </p>
         </div>
 
         <div>

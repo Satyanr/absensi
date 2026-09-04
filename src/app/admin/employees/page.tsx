@@ -28,6 +28,7 @@ function formatJoinDate(value: Date | null) {
 type Props = {
   searchParams: Promise<{
     q?: string | string[];
+    type?: string | string[];
   }>;
 };
 
@@ -48,7 +49,18 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
   const query = rawQuery?.trim().slice(0, 80) ?? "";
 
-  const [employees, totalEmployees, activeEmployees] = await Promise.all([
+  const rawType = Array.isArray(params.type) ? params.type[0] : params.type;
+
+  const typeFilter =
+    rawType === "EMPLOYEE" || rawType === "INTERN" ? rawType : "ALL";
+
+  const [
+    employees,
+    totalEmployees,
+    activeEmployees,
+    employeeCount,
+    internCount,
+  ] = await Promise.all([
     prisma.employee.findMany({
       where:
         query.length > 0
@@ -92,6 +104,8 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
         employeeCode: true,
 
+        employmentType: true,
+
         name: true,
 
         email: true,
@@ -122,6 +136,18 @@ export default async function EmployeesPage({ searchParams }: Props) {
       take: 200,
     }),
 
+    prisma.employee.count({
+      where: {
+        employmentType: "EMPLOYEE",
+      },
+    }),
+
+    prisma.employee.count({
+      where: {
+        employmentType: "INTERN",
+      },
+    }),
+
     prisma.employee.count(),
 
     prisma.employee.count({
@@ -131,7 +157,43 @@ export default async function EmployeesPage({ searchParams }: Props) {
     }),
   ]);
 
-  
+  const where = {
+    ...(typeFilter !== "ALL"
+      ? {
+          employmentType: typeFilter,
+        }
+      : {}),
+
+    ...(query
+      ? {
+          OR: [
+            {
+              employeeCode: {
+                contains: query,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              name: {
+                contains: query,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              email: {
+                contains: query,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              phone: {
+                contains: query,
+              },
+            },
+          ],
+        }
+      : {}),
+  };
 
   return (
     <main className="min-h-screen bg-neutral-100">
@@ -141,10 +203,10 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
         <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Data Karyawan</h1>
+            <h1 className="text-2xl font-bold">Data Personel</h1>
 
             <p className="mt-1 text-sm text-neutral-500">
-              Kelola karyawan yang dapat melakukan absensi.
+              Kelola Karyawan dan Magang yang dapat melakukan absensi.
             </p>
           </div>
 
@@ -153,6 +215,41 @@ export default async function EmployeesPage({ searchParams }: Props) {
             <span className="font-semibold">{activeEmployees}</span>
             <span className="text-neutral-400"> / {totalEmployees}</span>
           </div>
+        </div>
+
+        <div className="mt-6 inline-flex rounded-xl bg-white p-1 shadow-sm">
+          <Link
+            href="/admin/employees"
+            className={`rounded-lg px-4 py-2 text-sm font-medium ${
+              typeFilter === "ALL"
+                ? "bg-blue-600 text-white"
+                : "text-neutral-600"
+            }`}
+          >
+            Semua ({totalEmployees})
+          </Link>
+
+          <Link
+            href="/admin/employees?type=EMPLOYEE"
+            className={`rounded-lg px-4 py-2 text-sm font-medium ${
+              typeFilter === "EMPLOYEE"
+                ? "bg-blue-600 text-white"
+                : "text-neutral-600"
+            }`}
+          >
+            Karyawan ({employeeCount})
+          </Link>
+
+          <Link
+            href="/admin/employees?type=INTERN"
+            className={`rounded-lg px-4 py-2 text-sm font-medium ${
+              typeFilter === "INTERN"
+                ? "bg-blue-600 text-white"
+                : "text-neutral-600"
+            }`}
+          >
+            Magang ({internCount})
+          </Link>
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[360px_1fr]">
@@ -164,7 +261,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
           {/* LIST */}
           <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
             <div className="border-b border-neutral-200 p-5">
-              <h2 className="font-semibold">Daftar Karyawan</h2>
+              <h2 className="font-semibold">Data Personel</h2>
 
               <p className="mt-1 text-sm text-neutral-500">
                 Cari berdasarkan nama, kode karyawan, email, atau nomor telepon.
@@ -174,6 +271,9 @@ export default async function EmployeesPage({ searchParams }: Props) {
                 method="get"
                 className="mt-4 flex flex-col gap-2 sm:flex-row"
               >
+                {typeFilter !== "ALL" && (
+                  <input type="hidden" name="type" value={typeFilter} />
+                )}
                 <input
                   type="search"
                   name="q"
@@ -316,6 +416,17 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
                           <td className="px-5 py-4">
                             <StatusBadge active={employee.active} />
+                            <span
+                              className={`mt-1 inline-flex rounded-full px-2 py-1 text-[11px] font-medium ${
+                                employee.employmentType === "INTERN"
+                                  ? "bg-amber-50 text-amber-700"
+                                  : "bg-blue-50 text-blue-700"
+                              }`}
+                            >
+                              {employee.employmentType === "INTERN"
+                                ? "Magang"
+                                : "Karyawan"}
+                            </span>
                           </td>
 
                           <td className="px-5 py-4">
