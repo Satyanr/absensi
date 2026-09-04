@@ -7,6 +7,8 @@ import { validateGpsFreshness } from "@/lib/attendance/location-security";
 
 import { reverseGeocodeCoordinates } from "@/lib/attendance/reverse-geocode";
 
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+
 import {
   AttendanceDayStatus,
   AttendanceEventType,
@@ -44,6 +46,22 @@ export async function POST(request: NextRequest) {
    */
   const serverReceivedAt = new Date();
 
+  const ipLimited = enforceRateLimit(request, {
+    scope: "attendance-check-in-ip",
+
+    /*
+     * Longgar karena kantor
+     * dapat memakai satu NAT.
+     */
+    limit: 300,
+
+    windowMs: 5 * 60 * 1000,
+  });
+
+  if (ipLimited) {
+    return ipLimited;
+  }
+
   const form = await request.formData();
 
   const parsed = checkInSchema.safeParse({
@@ -75,6 +93,23 @@ export async function POST(request: NextRequest) {
         status: 400,
       },
     );
+  }
+
+  const employeeLimited = enforceRateLimit(request, {
+    scope: "attendance-check-in-employee",
+
+    limit: 10,
+
+    windowMs: 5 * 60 * 1000,
+
+    identity: parsed.data.employeeCode,
+
+    message:
+      "Terlalu banyak percobaan absen masuk untuk kode karyawan ini. Silakan coba kembali beberapa saat lagi.",
+  });
+
+  if (employeeLimited) {
+    return employeeLimited;
   }
 
   /*

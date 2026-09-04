@@ -19,6 +19,8 @@ import { validateGpsFreshness } from "@/lib/attendance/location-security";
 
 import { reverseGeocodeCoordinates } from "@/lib/attendance/reverse-geocode";
 
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+
 class DuplicateCheckOutError extends Error {}
 
 class MissingCheckInError extends Error {}
@@ -30,6 +32,18 @@ export async function POST(request: NextRequest) {
    * Browser tidak menentukan waktu checkout.
    */
   const serverReceivedAt = new Date();
+
+  const ipLimited = enforceRateLimit(request, {
+    scope: "attendance-check-out-ip",
+
+    limit: 300,
+
+    windowMs: 5 * 60 * 1000,
+  });
+
+  if (ipLimited) {
+    return ipLimited;
+  }
 
   const form = await request.formData();
 
@@ -59,6 +73,23 @@ export async function POST(request: NextRequest) {
         status: 400,
       },
     );
+  }
+
+  const employeeLimited = enforceRateLimit(request, {
+    scope: "attendance-check-out-employee",
+
+    limit: 10,
+
+    windowMs: 5 * 60 * 1000,
+
+    identity: parsed.data.employeeCode,
+
+    message:
+      "Terlalu banyak percobaan absen pulang untuk kode karyawan ini. Silakan coba kembali beberapa saat lagi.",
+  });
+
+  if (employeeLimited) {
+    return employeeLimited;
   }
 
   const gpsFreshness = validateGpsFreshness(
@@ -184,14 +215,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const geocode =
-  await reverseGeocodeCoordinates(
+  const geocode = await reverseGeocodeCoordinates(
     parsed.data.latitude,
     parsed.data.longitude,
   );
 
-const serverAddress =
-  geocode.address;
+  const serverAddress = geocode.address;
 
   /*
    * Persiapkan foto checkout.

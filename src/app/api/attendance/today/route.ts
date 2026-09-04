@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAttendanceDate } from "@/lib/attendance/time";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+
 
 export async function GET(request: NextRequest) {
+  const limited = enforceRateLimit(request, {
+    scope: "attendance-today",
+
+    limit: 120,
+
+    windowMs: 60 * 1000,
+
+    message: "Terlalu banyak permintaan data kehadiran. Silakan coba kembali.",
+  });
+
+  if (limited) {
+    return limited;
+  }
+
   const employeeCode = request.nextUrl.searchParams.get("employeeCode");
 
   if (!employeeCode) {

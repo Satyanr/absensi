@@ -1,82 +1,66 @@
 import path from "node:path";
 
-import {
-  readFile,
-} from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 
 import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-import {
-  prisma,
-} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
-import {
-  countLeaveDaysByYear,
-} from "@/lib/leave/balance";
+import { countLeaveDaysByYear } from "@/lib/leave/balance";
 
-import {
-  createPublicLeaveRequestSchema,
-} from "@/lib/validation/leave";
+import { createPublicLeaveRequestSchema } from "@/lib/validation/leave";
 
-export const runtime =
-  "nodejs";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
-function formatDate(
-  value: Date
-) {
-  return new Intl.DateTimeFormat(
-    "id-ID",
-    {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
-    }
-  ).format(value);
+export const runtime = "nodejs";
+
+function formatDate(value: Date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(value);
 }
 
-function safeFilenamePart(
-  value: string
-) {
-  return value.replace(
-    /[^a-zA-Z0-9_-]/g,
-    "-"
-  );
+function safeFilenamePart(value: string) {
+  return value.replace(/[^a-zA-Z0-9_-]/g, "-");
 }
 
-export async function POST(
-  request: NextRequest
-) {
+export async function POST(request: NextRequest) {
+  const ipLimited = enforceRateLimit(request, {
+    scope: "annual-leave-form-ip",
+
+    limit: 120,
+
+    windowMs: 10 * 60 * 1000,
+  });
+
+  if (ipLimited) {
+    return ipLimited;
+  }
+
   let body: unknown;
 
   try {
-    body =
-      await request.json();
+    body = await request.json();
   } catch {
     return NextResponse.json(
       {
-        error:
-          "Request tidak valid.",
+        error: "Request tidak valid.",
       },
       {
         status: 400,
-      }
+      },
     );
   }
 
   const input =
-    typeof body === "object" &&
-    body !== null
-      ? body as Record<
-          string,
-          unknown
-        >
+    typeof body === "object" && body !== null
+      ? (body as Record<string, unknown>)
       : {};
 
   /*
@@ -86,37 +70,46 @@ export async function POST(
    * Type dipaksa ANNUAL_LEAVE
    * oleh server.
    */
-  const parsed =
-    createPublicLeaveRequestSchema.safeParse({
-      employeeCode:
-        input.employeeCode,
+  const parsed = createPublicLeaveRequestSchema.safeParse({
+    employeeCode: input.employeeCode,
 
-      type:
-        "ANNUAL_LEAVE",
+    type: "ANNUAL_LEAVE",
 
-      startDate:
-        input.startDate,
+    startDate: input.startDate,
 
-      endDate:
-        input.endDate,
+    endDate: input.endDate,
 
-      reason:
-        input.reason,
-    });
+    reason: input.reason,
+  });
 
   if (!parsed.success) {
     return NextResponse.json(
       {
-        error:
-          "Data form cuti tidak valid.",
+        error: "Data form cuti tidak valid.",
 
-        details:
-          parsed.error.flatten(),
+        details: parsed.error.flatten(),
       },
       {
         status: 400,
-      }
+      },
     );
+  }
+
+  const employeeLimited = enforceRateLimit(request, {
+    scope: "annual-leave-form-employee",
+
+    limit: 10,
+
+    windowMs: 10 * 60 * 1000,
+
+    identity: parsed.data.employeeCode,
+
+    message:
+      "Form Cuti terlalu sering dibuat. Silakan tunggu beberapa saat lalu coba kembali.",
+  });
+
+  if (employeeLimited) {
+    return employeeLimited;
   }
 
   /*
@@ -125,62 +118,49 @@ export async function POST(
    * Jangan percaya nama yang
    * dikirim browser.
    */
-  const employee =
-    await prisma.employee.findFirst({
-      where: {
-        active: true,
+  const employee = await prisma.employee.findFirst({
+    where: {
+      active: true,
 
-        employeeCode: {
-          equals:
-            parsed.data.employeeCode,
+      employeeCode: {
+        equals: parsed.data.employeeCode,
 
-          mode:
-            "insensitive",
-        },
+        mode: "insensitive",
       },
+    },
 
-      select: {
-        employeeCode: true,
-        name: true,
-        leaveEligible: true,
-      },
-    });
+    select: {
+      employeeCode: true,
+      name: true,
+      leaveEligible: true,
+    },
+  });
 
   if (!employee) {
     return NextResponse.json(
       {
-        error:
-          "Karyawan tidak ditemukan atau sudah nonaktif.",
+        error: "Karyawan tidak ditemukan atau sudah nonaktif.",
       },
       {
         status: 404,
-      }
+      },
     );
   }
 
-  if (
-    !employee.leaveEligible
-  ) {
+  if (!employee.leaveEligible) {
     return NextResponse.json(
       {
-        error:
-          "Karyawan belum memiliki hak cuti.",
+        error: "Karyawan belum memiliki hak cuti.",
       },
       {
         status: 409,
-      }
+      },
     );
   }
 
-  const startDate =
-    new Date(
-      `${parsed.data.startDate}T00:00:00.000Z`
-    );
+  const startDate = new Date(`${parsed.data.startDate}T00:00:00.000Z`);
 
-  const endDate =
-    new Date(
-      `${parsed.data.endDate}T00:00:00.000Z`
-    );
+  const endDate = new Date(`${parsed.data.endDate}T00:00:00.000Z`);
 
   /*
    * Gunakan perhitungan yang sama
@@ -188,22 +168,9 @@ export async function POST(
    *
    * Saat ini masih calendar days.
    */
-  const usages =
-    countLeaveDaysByYear(
-      startDate,
-      endDate
-    );
+  const usages = countLeaveDaysByYear(startDate, endDate);
 
-  const leaveDays =
-    usages.reduce(
-      (
-        total,
-        item
-      ) =>
-        total +
-        item.days,
-      0
-    );
+  const leaveDays = usages.reduce((total, item) => total + item.days, 0);
 
   /*
    * Master template adalah
@@ -213,52 +180,38 @@ export async function POST(
    * Turbopack hanya perlu trace
    * folder resources/templates.
    */
-  const templatePath =
-    path.join(
-      process.cwd(),
-      "resources",
-      "templates",
-      "form-pengajuan-cuti.docx"
-    );
+  const templatePath = path.join(
+    process.cwd(),
+    "resources",
+    "templates",
+    "form-pengajuan-cuti.docx",
+  );
 
   let template: Buffer;
 
   try {
-    template =
-      await readFile(
-        templatePath
-      );
+    template = await readFile(templatePath);
   } catch (error) {
     console.error(error);
 
     return NextResponse.json(
       {
-        error:
-          "Template form cuti belum tersedia di server.",
+        error: "Template form cuti belum tersedia di server.",
       },
       {
         status: 500,
-      }
+      },
     );
   }
 
   try {
-    const zip =
-      new PizZip(
-        template
-      );
+    const zip = new PizZip(template);
 
-    const doc =
-      new Docxtemplater(
-        zip,
-        {
-          paragraphLoop:
-            true,
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
 
-          linebreaks:
-            true,
-        }
-      );
+      linebreaks: true,
+    });
 
     /*
      * Hanya data yang aman
@@ -271,72 +224,50 @@ export async function POST(
      * tetap diisi manual.
      */
     doc.render({
-      employeeName:
-        employee.name,
+      employeeName: employee.name,
 
-      leaveType:
-        "Cuti Tahunan",
+      leaveType: "Cuti Tahunan",
 
-      startDate:
-        formatDate(
-          startDate
-        ),
+      startDate: formatDate(startDate),
 
-      endDate:
-        formatDate(
-          endDate
-        ),
+      endDate: formatDate(endDate),
 
-      leaveDays:
-        `${leaveDays} Hari`,
+      leaveDays: `${leaveDays} Hari`,
 
-      reason:
-        parsed.data.reason,
+      reason: parsed.data.reason,
     });
 
-    const output =
-      doc.toBuffer();
+    const output = doc.toBuffer();
 
     const filename =
       [
         "Form-Cuti",
-        safeFilenamePart(
-          employee.employeeCode
-        ),
+        safeFilenamePart(employee.employeeCode),
         parsed.data.startDate,
-      ].join("-") +
-      ".docx";
+      ].join("-") + ".docx";
 
-    return new NextResponse(
-      new Uint8Array(
-        output
-      ),
-      {
-        status: 200,
+    return new NextResponse(new Uint8Array(output), {
+      status: 200,
 
-        headers: {
-          "Content-Type":
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      headers: {
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 
-          "Content-Disposition":
-            `attachment; filename="${filename}"`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
 
-          "Cache-Control":
-            "private, no-store",
-        },
-      }
-    );
+        "Cache-Control": "private, no-store",
+      },
+    });
   } catch (error) {
     console.error(error);
 
     return NextResponse.json(
       {
-        error:
-          "Gagal membuat Form Pengajuan Cuti.",
+        error: "Gagal membuat Form Pengajuan Cuti.",
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

@@ -6,6 +6,8 @@ import { createPublicLeaveRequestSchema } from "@/lib/validation/leave";
 
 import { notifyNewLeaveRequest } from "@/lib/notification/leave-notification";
 
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+
 import {
   allowedLeaveAttachmentMimeTypes,
   getLeaveAttachmentMaxBytes,
@@ -18,6 +20,21 @@ import {
 import { Prisma } from "@/generated/prisma/client";
 
 export async function POST(request: NextRequest) {
+  const ipLimited = enforceRateLimit(request, {
+    scope: "leave-submit-ip",
+
+    limit: 120,
+
+    windowMs: 10 * 60 * 1000,
+
+    message:
+      "Terlalu banyak pengiriman pengajuan. Silakan coba kembali beberapa saat lagi.",
+  });
+
+  if (ipLimited) {
+    return ipLimited;
+  }
+
   let form: FormData;
 
   try {
@@ -56,6 +73,23 @@ export async function POST(request: NextRequest) {
         status: 400,
       },
     );
+  }
+
+  const employeeLimited = enforceRateLimit(request, {
+    scope: "leave-submit-employee",
+
+    limit: 5,
+
+    windowMs: 10 * 60 * 1000,
+
+    identity: parsed.data.employeeCode,
+
+    message:
+      "Terlalu banyak pengajuan untuk kode karyawan ini. Silakan tunggu beberapa saat sebelum mencoba kembali.",
+  });
+
+  if (employeeLimited) {
+    return employeeLimited;
   }
 
   /*

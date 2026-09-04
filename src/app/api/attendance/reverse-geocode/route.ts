@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import { reverseGeocodeCoordinates } from "@/lib/attendance/reverse-geocode";
 
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+
 export const runtime = "nodejs";
 
 const schema = z.object({
@@ -13,6 +15,19 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  const limited = enforceRateLimit(request, {
+    scope: "reverse-geocode",
+
+    limit: 120,
+
+    windowMs: 60 * 1000,
+
+    message: "Terlalu banyak permintaan lokasi. Silakan coba kembali.",
+  });
+
+  if (limited) {
+    return limited;
+  }
   let body: unknown;
 
   try {
