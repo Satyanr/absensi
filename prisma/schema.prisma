@@ -97,9 +97,15 @@ enum NotificationStatus {
   FAILED
 }
 
+enum EmploymentType {
+  EMPLOYEE
+  INTERN
+}
+
 model Employee {
   id            String    @id @default(cuid())
   employeeCode  String    @unique @map("employee_code")
+  employmentType EmploymentType @default(EMPLOYEE) @map("employment_type")
   name          String
   email         String?   @unique
   phone         String?

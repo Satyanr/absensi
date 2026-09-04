@@ -131,6 +131,8 @@ export default async function EmployeesPage({ searchParams }: Props) {
     }),
   ]);
 
+  
+
   return (
     <main className="min-h-screen bg-neutral-100">
       <div className="mx-auto max-w-6xl p-4 md:p-8">
