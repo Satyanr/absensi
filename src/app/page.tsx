@@ -11,6 +11,8 @@ import { LoadingLabel, LoadingOverlay } from "@/components/ui/Loading";
 
 import { useToastFeedback } from "@/components/ui/ToastProvider";
 
+import EmployeeCodeInput from "@/components/employee/EmployeeCodeInput";
+
 type AttendanceMode = "OFFICE" | "PROJECT";
 
 type SelfieSource = "WEB_CAMERA" | "WEB_FILE_CAPTURE";
@@ -126,8 +128,8 @@ export default function HomePage() {
 
     const code = employeeCode.trim();
 
-    if (!code) {
-      setError("Kode karyawan wajib diisi.");
+    if (!code || code === "EMP" || code === "MAG") {
+      setError("Nomor kode wajib diisi.");
 
       return;
     }
@@ -545,10 +547,10 @@ export default function HomePage() {
           <BrandLogo />
 
           <div className="mt-5 border-t border-neutral-100 pt-5">
-            <h1 className="text-2xl font-bold">Absensi Karyawan</h1>
+            <h1 className="text-2xl font-bold">Absensi Personel</h1>
 
             <p className="mt-2 text-sm text-neutral-500">
-              Masukkan kode karyawan untuk memulai absensi.
+              Masukkan kode Karyawan atau Magang untuk memulai absensi.
             </p>
           </div>
         </div>
@@ -558,14 +560,10 @@ export default function HomePage() {
             onSubmit={searchEmployee}
             className="rounded-2xl bg-white p-6 shadow-sm"
           >
-            <label className="text-sm font-medium">Kode Karyawan</label>
-
-            <input
+            <EmployeeCodeInput
               value={employeeCode}
-              onChange={(event) => setEmployeeCode(event.target.value)}
-              placeholder="Contoh: EMP001"
-              autoComplete="off"
-              className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none focus:border-blue-500"
+              onChange={setEmployeeCode}
+              disabled={loading}
             />
 
             <button

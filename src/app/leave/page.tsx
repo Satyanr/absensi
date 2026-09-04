@@ -12,6 +12,10 @@ import { LoadingLabel, LoadingOverlay, Spinner } from "@/components/ui/Loading";
 
 import { useToastFeedback } from "@/components/ui/ToastProvider";
 
+import EmployeeCodeInput, {
+  normalizePersonnelCode,
+} from "@/components/employee/EmployeeCodeInput";
+
 type Employee = {
   employeeCode: string;
   name: string;
@@ -19,20 +23,12 @@ type Employee = {
 
 type LeaveType = "PERMISSION" | "SICK" | "ANNUAL_LEAVE";
 
-function normalizeEmployeeCode(value: string) {
-  const cleaned = value.toUpperCase().replace(/\s+/g, "");
-
-  const suffix = cleaned.startsWith("EMP") ? cleaned.slice(3) : cleaned;
-
-  return `EMP${suffix}`;
-}
-
 function PublicLeaveContent() {
   const searchParams = useSearchParams();
 
   const initialEmployeeCode = searchParams.get("employeeCode");
 
-  const normalizedInitialEmployeeCode = normalizeEmployeeCode(
+  const normalizedInitialEmployeeCode = normalizePersonnelCode(
     initialEmployeeCode ?? "",
   );
 
@@ -67,7 +63,7 @@ function PublicLeaveContent() {
   const { setError, setSuccess } = useToastFeedback();
 
   async function lookupEmployee(code: string) {
-    const cleanCode = normalizeEmployeeCode(code.trim());
+    const cleanCode = normalizePersonnelCode(code.trim());
 
     if (cleanCode === "EMP") {
       setError("Nomor kode karyawan wajib diisi.");
@@ -367,14 +363,10 @@ function PublicLeaveContent() {
           >
             <label className="text-sm font-medium">Kode Karyawan</label>
 
-            <input
+            <EmployeeCodeInput
               value={employeeCode}
-              onChange={(event) =>
-                setEmployeeCode(normalizeEmployeeCode(event.target.value))
-              }
-              placeholder="EMP001"
-              autoComplete="off"
-              className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none focus:border-blue-500"
+              onChange={setEmployeeCode}
+              disabled={lookupLoading}
             />
             <p className="mt-1 text-xs text-neutral-500">
               Prefix EMP otomatis. Cukup ketik nomor karyawan, contoh 001.

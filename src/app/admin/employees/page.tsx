@@ -54,109 +54,6 @@ export default async function EmployeesPage({ searchParams }: Props) {
   const typeFilter =
     rawType === "EMPLOYEE" || rawType === "INTERN" ? rawType : "ALL";
 
-  const [
-    employees,
-    totalEmployees,
-    activeEmployees,
-    employeeCount,
-    internCount,
-  ] = await Promise.all([
-    prisma.employee.findMany({
-      where:
-        query.length > 0
-          ? {
-              OR: [
-                {
-                  employeeCode: {
-                    contains: query,
-
-                    mode: "insensitive",
-                  },
-                },
-
-                {
-                  name: {
-                    contains: query,
-
-                    mode: "insensitive",
-                  },
-                },
-
-                {
-                  email: {
-                    contains: query,
-
-                    mode: "insensitive",
-                  },
-                },
-
-                {
-                  phone: {
-                    contains: query,
-                  },
-                },
-              ],
-            }
-          : undefined,
-
-      select: {
-        id: true,
-
-        employeeCode: true,
-
-        employmentType: true,
-
-        name: true,
-
-        email: true,
-
-        phone: true,
-
-        joinDate: true,
-
-        leaveEligible: true,
-
-        active: true,
-      },
-
-      orderBy: [
-        {
-          active: "desc",
-        },
-
-        {
-          name: "asc",
-        },
-      ],
-
-      /*
-       * Cegah halaman terlalu berat
-       * kalau data nanti sangat banyak.
-       */
-      take: 200,
-    }),
-
-    prisma.employee.count({
-      where: {
-        employmentType: "EMPLOYEE",
-      },
-    }),
-
-    prisma.employee.count({
-      where: {
-        employmentType: "INTERN",
-      },
-    }),
-
-    prisma.employee.count(),
-
-    prisma.employee.count({
-      where: {
-        active: true,
-      },
-    }),
-  ]);
-
   const where = {
     ...(typeFilter !== "ALL"
       ? {
@@ -194,6 +91,54 @@ export default async function EmployeesPage({ searchParams }: Props) {
         }
       : {}),
   };
+
+  const [
+    employees,
+    totalEmployees,
+    activeEmployees,
+    employeeCount,
+    internCount,
+  ] = await Promise.all([
+    prisma.employee.findMany({
+      where,
+
+      select: {
+        id: true,
+        employeeCode: true,
+        employmentType: true,
+        name: true,
+        email: true,
+        phone: true,
+        joinDate: true,
+        leaveEligible: true,
+        active: true,
+      },
+
+      orderBy: [{ active: "desc" }, { name: "asc" }],
+
+      take: 200,
+    }),
+
+    prisma.employee.count(),
+
+    prisma.employee.count({
+      where: {
+        active: true,
+      },
+    }),
+
+    prisma.employee.count({
+      where: {
+        employmentType: "EMPLOYEE",
+      },
+    }),
+
+    prisma.employee.count({
+      where: {
+        employmentType: "INTERN",
+      },
+    }),
+  ]);
 
   return (
     <main className="min-h-screen bg-neutral-100">

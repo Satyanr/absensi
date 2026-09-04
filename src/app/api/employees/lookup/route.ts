@@ -47,13 +47,14 @@ export async function GET(request: NextRequest) {
     select: {
       employeeCode: true,
       name: true,
+      employmentType: true,
     },
   });
 
   if (!employee) {
     return NextResponse.json(
       {
-        error: "Karyawan tidak ditemukan.",
+        error: "Personel tidak ditemukan.",
       },
       {
         status: 404,

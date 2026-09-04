@@ -72,11 +72,12 @@ export default function EmployeeCreateForm() {
         return;
       }
 
-      setSuccess("Karyawan berhasil ditambahkan.");
+      setSuccess(data.message ?? "Personel berhasil ditambahkan.");
 
       /*
        * Kosongkan form.
        */
+      setEmploymentType("EMPLOYEE");
       setCodeNumber("");
       setName("");
       setEmail("");
