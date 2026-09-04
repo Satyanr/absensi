@@ -6,9 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { useToastFeedback } from "@/components/ui/ToastProvider";
 
-import {
-  LoadingLabel,
-} from "@/components/ui/Loading";
+import { LoadingLabel } from "@/components/ui/Loading";
 
 type ReviewAction = "APPROVE" | "REJECT";
 
@@ -128,7 +126,10 @@ export default function LeaveReviewActions({
 
       setFileInputKey((value) => value + 1);
 
-      setSuccess(data.message ?? "Dokumen final berhasil diupload.");
+      setSuccess(
+        data.message ??
+          "Dokumen final berhasil diupload.",
+      );
 
       router.refresh();
     } catch {
@@ -244,11 +245,14 @@ export default function LeaveReviewActions({
             onClick={uploadFinalDocument}
             className="mt-3 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
           >
-            {documentUploading
-              ? "Mengupload..."
-              : localHasApprovedDocument
+            <LoadingLabel
+              loading={documentUploading}
+              loadingText="Mengupload..."
+            >
+              {localHasApprovedDocument
                 ? "Ganti Dokumen Final"
                 : "Upload Dokumen Final"}
+            </LoadingLabel>
           </button>
         </div>
       )}
@@ -267,11 +271,12 @@ export default function LeaveReviewActions({
           onClick={() => review("APPROVE")}
           className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {loadingAction === "APPROVE"
-            ? "Menyetujui..."
-            : isAnnualLeave
-              ? "Setujui Cuti"
-              : "Setujui"}
+          <LoadingLabel
+            loading={loadingAction === "APPROVE"}
+            loadingText="Menyetujui..."
+          >
+            {isAnnualLeave ? "Setujui Cuti" : "Setujui"}
+          </LoadingLabel>
         </button>
 
         <button
@@ -280,7 +285,12 @@ export default function LeaveReviewActions({
           onClick={() => review("REJECT")}
           className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
-          {loadingAction === "REJECT" ? "Menolak..." : "Tolak"}
+          <LoadingLabel
+            loading={loadingAction === "REJECT"}
+            loadingText="Menolak..."
+          >
+            Tolak
+          </LoadingLabel>
         </button>
       </div>
     </div>

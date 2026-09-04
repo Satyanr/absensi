@@ -1,42 +1,30 @@
 "use client";
 
-import {
-  useState,
-} from "react";
+import { useState } from "react";
 
-import {
-  useRouter,
-} from "next/navigation";
+import { useRouter } from "next/navigation";
 
-import {
-  useToastFeedback,
-} from "@/components/ui/ToastProvider";
+import { useToastFeedback } from "@/components/ui/ToastProvider";
+
+import { LoadingLabel } from "@/components/ui/Loading";
 
 export default function NotificationRetryButton({
   notificationId,
 }: {
   notificationId: string;
 }) {
-  const router =
-    useRouter();
+  const router = useRouter();
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
-    const {
-  setError,
-  setSuccess,
-} = useToastFeedback();
+  const { setError, setSuccess } = useToastFeedback();
 
   async function retry() {
     if (loading) {
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        "Kirim ulang notifikasi ini?",
-      );
+    const confirmed = window.confirm("Kirim ulang notifikasi ini?");
 
     if (!confirmed) {
       return;
@@ -45,17 +33,14 @@ export default function NotificationRetryButton({
     setLoading(true);
 
     try {
-      const response =
-        await fetch(
-          `/api/admin/notifications/${notificationId}/retry`,
-          {
-            method:
-              "POST",
-          },
-        );
+      const response = await fetch(
+        `/api/admin/notifications/${notificationId}/retry`,
+        {
+          method: "POST",
+        },
+      );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
         setError(data.error ?? "Gagal mengirim ulang email.");
@@ -80,9 +65,9 @@ export default function NotificationRetryButton({
       onClick={retry}
       className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 disabled:opacity-50"
     >
-      {loading
-        ? "Mengirim..."
-        : "Kirim Ulang"}
+      <LoadingLabel loading={loading} loadingText="Mengirim...">
+        Kirim Ulang
+      </LoadingLabel>
     </button>
   );
 }

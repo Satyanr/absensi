@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 
 import { useToastFeedback } from "@/components/ui/ToastProvider";
 
+import { LoadingLabel } from "@/components/ui/Loading";
+
 type Props = {
   userId: string;
 
@@ -61,6 +63,13 @@ export default function UserStatusButton({
         return;
       }
 
+      setSuccess(
+        data.message ??
+          (active
+            ? "User berhasil dinonaktifkan."
+            : "User berhasil diaktifkan."),
+      );
+
       router.refresh();
     } catch {
       setError("Terjadi masalah jaringan.");
@@ -78,13 +87,13 @@ export default function UserStatusButton({
         active ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
       }`}
     >
-      {isCurrentUser
-        ? "Akun Anda"
-        : loading
-          ? "Memproses..."
-          : active
-            ? "Nonaktifkan"
-            : "Aktifkan"}
+      {isCurrentUser ? (
+        "Akun Anda"
+      ) : (
+        <LoadingLabel loading={loading} loadingText="Memproses...">
+          {active ? "Nonaktifkan" : "Aktifkan"}
+        </LoadingLabel>
+      )}
     </button>
   );
 }

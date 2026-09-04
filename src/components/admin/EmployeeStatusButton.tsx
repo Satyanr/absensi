@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 
 import { useToastFeedback } from "@/components/ui/ToastProvider";
 
+import { LoadingLabel } from "@/components/ui/Loading";
+
 type Props = {
   employeeId: string;
   active: boolean;
@@ -60,6 +62,13 @@ export default function EmployeeStatusButton({ employeeId, active }: Props) {
         return;
       }
 
+      setSuccess(
+        data.message ??
+          (active
+            ? "Karyawan berhasil dinonaktifkan."
+            : "Karyawan berhasil diaktifkan."),
+      );
+
       router.refresh();
     } catch {
       setError("Terjadi masalah jaringan.");
@@ -77,7 +86,9 @@ export default function EmployeeStatusButton({ employeeId, active }: Props) {
         active ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
       } disabled:opacity-50`}
     >
-      {loading ? "Memproses..." : active ? "Nonaktifkan" : "Aktifkan"}
+      <LoadingLabel loading={loading} loadingText="Memproses...">
+        {active ? "Nonaktifkan" : "Aktifkan"}
+      </LoadingLabel>
     </button>
   );
 }
