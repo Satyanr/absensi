@@ -5,85 +5,45 @@ const createUsernameSchema = z
   .trim()
   .max(60)
   .optional()
-  .transform((value) =>
-    value ? value : undefined,
-  );
+  .transform((value) => (value ? value.toLowerCase() : undefined));
 
 const updateUsernameSchema = z
-  .union([
-    z.string().trim().max(60),
-    z.null(),
-  ])
+  .union([z.string().trim().max(60), z.null()])
   .optional()
-  .transform((value) =>
-    value === "" ? null : value,
-  );
+  .transform((value) => {
+    if (value === "" || value === null) {
+      return null;
+    }
 
-export const createAdminUserSchema =
-  z.object({
-    email: z
-      .string()
-      .trim()
-      .email("Email tidak valid.")
-      .max(160),
+    return value?.toLowerCase();
+  });
 
-    username:
-      createUsernameSchema,
+export const createAdminUserSchema = z.object({
+  email: z.string().trim().email("Email tidak valid.").max(160),
+
+  username: createUsernameSchema,
+
+  password: z.string().min(8, "Password minimal 8 karakter.").max(128),
+
+  role: z.enum(["ADMIN", "LEADER"]),
+});
+
+export const updateAdminUserSchema = z
+  .object({
+    email: z.string().trim().email("Email tidak valid.").max(160).optional(),
+
+    username: updateUsernameSchema,
 
     password: z
       .string()
-      .min(
-        8,
-        "Password minimal 8 karakter.",
-      )
-      .max(128),
+      .min(8, "Password minimal 8 karakter.")
+      .max(128)
+      .optional(),
 
-    role: z.enum([
-      "ADMIN",
-      "LEADER",
-    ]),
+    role: z.enum(["ADMIN", "LEADER"]).optional(),
+
+    active: z.boolean().optional(),
+  })
+  .refine((data) => Object.values(data).some((value) => value !== undefined), {
+    message: "Tidak ada perubahan.",
   });
-
-export const updateAdminUserSchema =
-  z
-    .object({
-      email: z
-        .string()
-        .trim()
-        .email("Email tidak valid.")
-        .max(160)
-        .optional(),
-
-      username:
-        updateUsernameSchema,
-
-      password: z
-        .string()
-        .min(
-          8,
-          "Password minimal 8 karakter.",
-        )
-        .max(128)
-        .optional(),
-
-      role: z
-        .enum([
-          "ADMIN",
-          "LEADER",
-        ])
-        .optional(),
-
-      active:
-        z.boolean().optional(),
-    })
-    .refine(
-      (data) =>
-        Object.values(data).some(
-          (value) =>
-            value !== undefined,
-        ),
-      {
-        message:
-          "Tidak ada perubahan.",
-      },
-    );
