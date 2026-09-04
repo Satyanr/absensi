@@ -4,9 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { useToastFeedback } from "@/components/ui/ToastProvider";
 
-import {
-  LoadingLabel,
-} from "@/components/ui/Loading";
+import { LoadingLabel } from "@/components/ui/Loading";
 
 type Employee = {
   id: string;
@@ -46,21 +44,12 @@ export default function LeaveBalanceForm({
 
   useEffect(() => {
     if (!employeeId) {
-      setUsed(0);
-      setEntitlement(12);
-      setCarriedOver(0);
-      setAdjusted(0);
-
       return;
     }
 
     let cancelled = false;
 
     async function loadBalance() {
-      setLoading(true);
-      setError("");
-      setSuccess("");
-
       try {
         const response = await fetch(
           `/api/admin/leave-balances?employeeId=${encodeURIComponent(
@@ -80,10 +69,6 @@ export default function LeaveBalanceForm({
           return;
         }
 
-        /*
-         * Kalau record belum ada,
-         * default hak cuti 12 hari.
-         */
         setEntitlement(data.exists ? data.balance.entitlement : 12);
 
         setCarriedOver(data.balance.carriedOver);
@@ -107,7 +92,7 @@ export default function LeaveBalanceForm({
     return () => {
       cancelled = true;
     };
-  }, [employeeId, year]);
+  }, [employeeId, year, setError]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -175,7 +160,22 @@ export default function LeaveBalanceForm({
 
           <select
             value={employeeId}
-            onChange={(event) => setEmployeeId(event.target.value)}
+            onChange={(event) => {
+              const nextEmployeeId = event.target.value;
+
+              setEmployeeId(nextEmployeeId);
+
+              /*
+               * Reset dilakukan dari event
+               * user, bukan dari useEffect.
+               */
+              setEntitlement(12);
+              setCarriedOver(0);
+              setAdjusted(0);
+              setUsed(0);
+
+              setLoading(Boolean(nextEmployeeId));
+            }}
             required
             className="mt-2 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3"
           >
@@ -197,7 +197,13 @@ export default function LeaveBalanceForm({
             min={2000}
             max={2100}
             value={year}
-            onChange={(event) => setYear(Number(event.target.value))}
+            onChange={(event) => {
+              setYear(Number(event.target.value));
+
+              if (employeeId) {
+                setLoading(true);
+              }
+            }}
             className="mt-2 w-full rounded-xl border border-neutral-300 px-4 py-3"
           />
         </div>

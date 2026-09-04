@@ -233,6 +233,7 @@ export default function SelfieCapture({ onCapture }: SelfieCaptureProps) {
 
       {previewUrl && (
         <div className="mt-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={previewUrl}
             alt="Preview selfie"

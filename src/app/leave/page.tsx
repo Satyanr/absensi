@@ -32,8 +32,16 @@ function PublicLeaveContent() {
 
   const initialEmployeeCode = searchParams.get("employeeCode");
 
+  const normalizedInitialEmployeeCode = normalizeEmployeeCode(
+    initialEmployeeCode ?? "",
+  );
+
+  const shouldAutoLookup = Boolean(
+    initialEmployeeCode && normalizedInitialEmployeeCode !== "EMP",
+  );
+
   const [employeeCode, setEmployeeCode] = useState(
-    normalizeEmployeeCode(initialEmployeeCode ?? ""),
+    normalizedInitialEmployeeCode,
   );
 
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -52,7 +60,7 @@ function PublicLeaveContent() {
 
   const [templateDownloading, setTemplateDownloading] = useState(false);
 
-  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupLoading, setLookupLoading] = useState(shouldAutoLookup);
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -100,14 +108,56 @@ function PublicLeaveContent() {
   }
 
   useEffect(() => {
-    if (!initialEmployeeCode) {
+    if (!shouldAutoLookup) {
       return;
     }
 
-    void lookupEmployee(initialEmployeeCode);
+    let cancelled = false;
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialEmployeeCode]);
+    async function loadInitialEmployee() {
+      try {
+        const response = await fetch(
+          `/api/employees/lookup?code=${encodeURIComponent(
+            normalizedInitialEmployeeCode,
+          )}`,
+        );
+
+        const data = await response.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.ok) {
+          setEmployee(null);
+
+          setError(data.error ?? "Karyawan tidak ditemukan.");
+
+          return;
+        }
+
+        setEmployee(data.employee);
+
+        setEmployeeCode(data.employee.employeeCode);
+      } catch {
+        if (!cancelled) {
+          setEmployee(null);
+
+          setError("Terjadi masalah jaringan.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLookupLoading(false);
+        }
+      }
+    }
+
+    void loadInitialEmployee();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [normalizedInitialEmployeeCode, shouldAutoLookup, setError]);
 
   async function searchEmployee(event: FormEvent) {
     event.preventDefault();

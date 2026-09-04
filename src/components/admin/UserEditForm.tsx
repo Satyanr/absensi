@@ -90,7 +90,9 @@ export default function UserEditForm({ user, isCurrentUser }: Props) {
        * menyebabkan session dicabut.
        */
       if (isCurrentUser && (newPassword || roleChanged)) {
-        window.location.href = "/admin/login";
+        router.replace("/admin/login");
+
+        router.refresh();
 
         return;
       }
