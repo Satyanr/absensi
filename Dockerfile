@@ -20,7 +20,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-RUN mkdir -p /app/storage/attendance && chown -R nextjs:nodejs /app/storage
+RUN mkdir -p /app/storage/attendance /app/storage/leave \
+    && chown -R nextjs:nodejs /app/storage
 USER nextjs
 EXPOSE 3000
 CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]

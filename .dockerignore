@@ -2,4 +2,7 @@ node_modules
 .next
 .git
 .env
+
+storage/attendance
+storage/leave
 storage/backup

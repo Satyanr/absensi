@@ -41,6 +41,7 @@ services:
 
     volumes:
       - attendance_photos:/app/storage/attendance
+      - leave_files:/app/storage/leave
 
     ports:
       - "3000:3000"
@@ -68,6 +69,7 @@ services:
     volumes:
       - ./storage/backup:/backup
       - attendance_photos:/photos:ro
+      - leave_files:/leave:ro
 
     entrypoint: ["/bin/sh", "-c"]
 
@@ -81,6 +83,7 @@ services:
         -Fc
         -f /backup/db-$$stamp.dump;
         tar -czf /backup/photos-$$stamp.tar.gz -C /photos .;
+        tar -czf /backup/leave-$$stamp.tar.gz -C /leave .;
         find /backup -type f -mtime +14 -delete;
         sleep 86400;
       done
@@ -88,3 +91,4 @@ services:
 volumes:
   postgres_data:
   attendance_photos:
+  leave_files:

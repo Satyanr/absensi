@@ -4,7 +4,16 @@ node_modules
 .env.local
 npm-debug.log*
 coverage
+
 storage/attendance/*
 !storage/attendance/.gitkeep
+
 storage/backup/*
 !storage/backup/.gitkeep
+
+storage/leave/*
+!storage/leave/.gitkeep
+
+Tambahkan file kosong:
+
+storage/leave/.gitkeep
