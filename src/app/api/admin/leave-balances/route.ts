@@ -24,7 +24,7 @@ const updateBalanceSchema = z.object({
   adjusted: z.number().int().min(-365).max(365),
 });
 
-async function requireAdmin() {
+async function requireAdminOrLeader() {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -41,16 +41,17 @@ async function requireAdmin() {
     };
   }
 
-  if (user.role === "EMPLOYEE") {
+  if (user.role !== "ADMIN" && user.role !== "LEADER") {
     return {
       error: NextResponse.json(
         {
-          error: "Tidak memiliki akses.",
+          error: "Hanya Admin atau Leader yang dapat mengelola saldo cuti.",
         },
         {
           status: 403,
         },
       ),
+
       user: null,
     };
   }
@@ -62,7 +63,7 @@ async function requireAdmin() {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdmin();
+  const auth = await requireAdminOrLeader();
 
   if (auth.error) {
     return auth.error;
@@ -164,7 +165,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const auth = await requireAdmin();
+  const auth = await requireAdminOrLeader();
 
   if (auth.error || !auth.user) {
     return auth.error;

@@ -25,43 +25,111 @@ function formatJoinDate(value: Date | null) {
   }).format(value);
 }
 
-export default async function EmployeesPage() {
+type Props = {
+  searchParams: Promise<{
+    q?: string | string[];
+  }>;
+};
+
+export default async function EmployeesPage({ searchParams }: Props) {
   const user = await getCurrentUser();
 
   if (!user) {
     redirect("/admin/login");
   }
 
-  if (user.role === "EMPLOYEE") {
+  if (user.role !== "ADMIN" && user.role !== "LEADER") {
     redirect("/");
   }
 
-  const employees = await prisma.employee.findMany({
-    select: {
-      id: true,
-      employeeCode: true,
-      name: true,
-      email: true,
-      phone: true,
-      joinDate: true,
-      leaveEligible: true,
-      active: true,
-    },
+  const params = await searchParams;
 
-    orderBy: [
-      {
-        active: "desc",
+  const rawQuery = Array.isArray(params.q) ? params.q[0] : params.q;
+
+  const query = rawQuery?.trim().slice(0, 80) ?? "";
+
+  const [employees, totalEmployees, activeEmployees] = await Promise.all([
+    prisma.employee.findMany({
+      where:
+        query.length > 0
+          ? {
+              OR: [
+                {
+                  employeeCode: {
+                    contains: query,
+
+                    mode: "insensitive",
+                  },
+                },
+
+                {
+                  name: {
+                    contains: query,
+
+                    mode: "insensitive",
+                  },
+                },
+
+                {
+                  email: {
+                    contains: query,
+
+                    mode: "insensitive",
+                  },
+                },
+
+                {
+                  phone: {
+                    contains: query,
+                  },
+                },
+              ],
+            }
+          : undefined,
+
+      select: {
+        id: true,
+
+        employeeCode: true,
+
+        name: true,
+
+        email: true,
+
+        phone: true,
+
+        joinDate: true,
+
+        leaveEligible: true,
+
+        active: true,
       },
 
-      {
-        name: "asc",
-      },
-    ],
-  });
+      orderBy: [
+        {
+          active: "desc",
+        },
 
-  const activeEmployees = employees.filter(
-    (employee) => employee.active,
-  ).length;
+        {
+          name: "asc",
+        },
+      ],
+
+      /*
+       * Cegah halaman terlalu berat
+       * kalau data nanti sangat banyak.
+       */
+      take: 200,
+    }),
+
+    prisma.employee.count(),
+
+    prisma.employee.count({
+      where: {
+        active: true,
+      },
+    }),
+  ]);
 
   return (
     <main className="min-h-screen bg-neutral-100">
@@ -81,7 +149,7 @@ export default async function EmployeesPage() {
           <div className="w-fit rounded-xl bg-white px-4 py-3 text-sm shadow-sm">
             <span className="text-neutral-500">Aktif:</span>{" "}
             <span className="font-semibold">{activeEmployees}</span>
-            <span className="text-neutral-400"> / {employees.length}</span>
+            <span className="text-neutral-400"> / {totalEmployees}</span>
           </div>
         </div>
 
@@ -97,13 +165,51 @@ export default async function EmployeesPage() {
               <h2 className="font-semibold">Daftar Karyawan</h2>
 
               <p className="mt-1 text-sm text-neutral-500">
-                {employees.length} karyawan terdaftar.
+                Cari berdasarkan nama, kode karyawan, email, atau nomor telepon.
+              </p>
+
+              <form
+                method="get"
+                className="mt-4 flex flex-col gap-2 sm:flex-row"
+              >
+                <input
+                  type="search"
+                  name="q"
+                  defaultValue={query}
+                  placeholder="Contoh: EMP001 atau Budi"
+                  autoComplete="off"
+                  className="min-w-0 flex-1 rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-blue-500"
+                />
+
+                <button
+                  type="submit"
+                  className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white"
+                >
+                  Cari
+                </button>
+
+                {query && (
+                  <Link
+                    href="/admin/employees"
+                    className="rounded-xl border border-neutral-300 px-5 py-3 text-center text-sm font-semibold text-neutral-600"
+                  >
+                    Reset
+                  </Link>
+                )}
+              </form>
+
+              <p className="mt-3 text-xs text-neutral-500">
+                {query
+                  ? `${employees.length} hasil untuk "${query}"`
+                  : `${totalEmployees} karyawan terdaftar.`}
               </p>
             </div>
 
             {employees.length === 0 ? (
               <div className="p-10 text-center text-sm text-neutral-500">
-                Belum ada karyawan.
+                {query
+                  ? `Tidak ada karyawan yang cocok dengan "${query}".`
+                  : "Belum ada karyawan."}
               </div>
             ) : (
               <>

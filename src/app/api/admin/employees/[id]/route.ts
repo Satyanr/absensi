@@ -1,19 +1,10 @@
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-import {
-  getCurrentUser,
-} from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
 
-import {
-  prisma,
-} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
-import {
-  updateEmployeeSchema,
-} from "@/lib/validation/admin-employee";
+import { updateEmployeeSchema } from "@/lib/validation/admin-employee";
 
 type RouteContext = {
   params: Promise<{
@@ -31,38 +22,24 @@ function employeeForAudit(employee: {
   active: boolean;
 }) {
   return {
-    employeeCode:
-      employee.employeeCode,
+    employeeCode: employee.employeeCode,
 
-    name:
-      employee.name,
+    name: employee.name,
 
-    email:
-      employee.email,
+    email: employee.email,
 
-    phone:
-      employee.phone,
+    phone: employee.phone,
 
-    joinDate:
-      employee.joinDate
-        ? employee.joinDate
-            .toISOString()
-        : null,
+    joinDate: employee.joinDate ? employee.joinDate.toISOString() : null,
 
-    leaveEligible:
-      employee.leaveEligible,
+    leaveEligible: employee.leaveEligible,
 
-    active:
-      employee.active,
+    active: employee.active,
   };
 }
 
-export async function PATCH(
-  request: NextRequest,
-  context: RouteContext
-) {
-  const user =
-    await getCurrentUser();
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const user = await getCurrentUser();
 
   if (!user) {
     return NextResponse.json(
@@ -71,204 +48,156 @@ export async function PATCH(
       },
       {
         status: 401,
-      }
+      },
     );
   }
 
-  if (
-    user.role === "EMPLOYEE"
-  ) {
+  if (user.role !== "ADMIN" && user.role !== "LEADER") {
     return NextResponse.json(
       {
-        error:
-          "Tidak memiliki akses.",
+        error: "Hanya Admin atau Leader yang dapat mengelola karyawan.",
       },
       {
         status: 403,
-      }
+      },
     );
   }
 
-  const { id } =
-    await context.params;
+  const { id } = await context.params;
 
-  const existing =
-    await prisma.employee.findUnique({
-      where: {
-        id,
-      },
+  const existing = await prisma.employee.findUnique({
+    where: {
+      id,
+    },
 
-      select: {
-        id: true,
-        employeeCode: true,
-        name: true,
-        email: true,
-        phone: true,
-        joinDate: true,
-        leaveEligible: true,
-        active: true,
-      },
-    });
+    select: {
+      id: true,
+      employeeCode: true,
+      name: true,
+      email: true,
+      phone: true,
+      joinDate: true,
+      leaveEligible: true,
+      active: true,
+    },
+  });
 
   if (!existing) {
     return NextResponse.json(
       {
-        error:
-          "Karyawan tidak ditemukan.",
+        error: "Karyawan tidak ditemukan.",
       },
       {
         status: 404,
-      }
+      },
     );
   }
 
   let body: unknown;
 
   try {
-    body =
-      await request.json();
+    body = await request.json();
   } catch {
     return NextResponse.json(
       {
-        error:
-          "Request tidak valid.",
+        error: "Request tidak valid.",
       },
       {
         status: 400,
-      }
+      },
     );
   }
 
-  const parsed =
-    updateEmployeeSchema.safeParse(
-      body
-    );
+  const parsed = updateEmployeeSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
       {
-        error:
-          "Data karyawan tidak valid.",
+        error: "Data karyawan tidak valid.",
 
-        details:
-          parsed.error.flatten(),
+        details: parsed.error.flatten(),
       },
       {
         status: 400,
-      }
+      },
     );
   }
 
   try {
-    const updated =
-      await prisma.$transaction(
-        async (tx) => {
-          const employee =
-            await tx.employee.update({
-              where: {
-                id,
-              },
+    const updated = await prisma.$transaction(async (tx) => {
+      const employee = await tx.employee.update({
+        where: {
+          id,
+        },
 
-              data: {
-                employeeCode:
-                  parsed.data
-                    .employeeCode,
+        data: {
+          employeeCode: parsed.data.employeeCode,
 
-                name:
-                  parsed.data.name,
+          name: parsed.data.name,
 
-                email:
-                  parsed.data.email,
+          email: parsed.data.email,
 
-                phone:
-                  parsed.data.phone,
+          phone: parsed.data.phone,
 
-                joinDate:
-                  parsed.data.joinDate ===
-                  undefined
-                    ? undefined
-                    : parsed.data
-                        .joinDate ===
-                      null
-                    ? null
-                    : new Date(
-                        `${parsed.data.joinDate}T00:00:00.000Z`
-                      ),
+          joinDate:
+            parsed.data.joinDate === undefined
+              ? undefined
+              : parsed.data.joinDate === null
+                ? null
+                : new Date(`${parsed.data.joinDate}T00:00:00.000Z`),
 
-                leaveEligible:
-                  parsed.data
-                    .leaveEligible,
+          leaveEligible: parsed.data.leaveEligible,
 
-                active:
-                  parsed.data.active,
-              },
+          active: parsed.data.active,
+        },
 
-              select: {
-                id: true,
-                employeeCode: true,
-                name: true,
-                email: true,
-                phone: true,
-                joinDate: true,
-                leaveEligible: true,
-                active: true,
-              },
-            });
+        select: {
+          id: true,
+          employeeCode: true,
+          name: true,
+          email: true,
+          phone: true,
+          joinDate: true,
+          leaveEligible: true,
+          active: true,
+        },
+      });
 
-          /*
-           * Catat perubahan.
-           */
-          await tx.auditLog.create({
-            data: {
-              actorId:
-                user.id,
+      /*
+       * Catat perubahan.
+       */
+      await tx.auditLog.create({
+        data: {
+          actorId: user.id,
 
-              action:
-                "UPDATE",
+          action: "UPDATE",
 
-              entityType:
-                "Employee",
+          entityType: "Employee",
 
-              entityId:
-                employee.id,
+          entityId: employee.id,
 
-              before:
-                employeeForAudit(
-                  existing
-                ),
+          before: employeeForAudit(existing),
 
-              after:
-                employeeForAudit(
-                  employee
-                ),
+          after: employeeForAudit(employee),
 
-              ipAddress:
-                request.headers.get(
-                  "x-forwarded-for"
-                ),
+          ipAddress: request.headers.get("x-forwarded-for"),
 
-              userAgent:
-                request.headers.get(
-                  "user-agent"
-                ),
-            },
-          });
+          userAgent: request.headers.get("user-agent"),
+        },
+      });
 
-          return employee;
-        }
-      );
+      return employee;
+    });
 
     return NextResponse.json({
       ok: true,
 
       message:
-        parsed.data.active ===
-        false
+        parsed.data.active === false
           ? "Karyawan berhasil dinonaktifkan."
-          : parsed.data.active ===
-            true
-          ? "Karyawan berhasil diaktifkan."
-          : "Data karyawan berhasil diperbarui.",
+          : parsed.data.active === true
+            ? "Karyawan berhasil diaktifkan."
+            : "Data karyawan berhasil diperbarui.",
 
       employee: updated,
     });
@@ -277,30 +206,27 @@ export async function PATCH(
 
     if (
       error &&
-      typeof error ===
-        "object" &&
+      typeof error === "object" &&
       "code" in error &&
       error.code === "P2002"
     ) {
       return NextResponse.json(
         {
-          error:
-            "Kode karyawan atau email sudah digunakan.",
+          error: "Kode karyawan atau email sudah digunakan.",
         },
         {
           status: 409,
-        }
+        },
       );
     }
 
     return NextResponse.json(
       {
-        error:
-          "Gagal memperbarui karyawan.",
+        error: "Gagal memperbarui karyawan.",
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

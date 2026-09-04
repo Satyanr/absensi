@@ -93,7 +93,7 @@ export default async function DashboardPage() {
   /*
    * Employee biasa tidak boleh masuk dashboard.
    */
-  if (user.role === "EMPLOYEE") {
+  if (user.role !== "ADMIN" && user.role !== "LEADER") {
     redirect("/");
   }
 
