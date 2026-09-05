@@ -91,6 +91,17 @@ function minutesToClock(value: number | null) {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
+function minutesToExcelDuration(value: number) {
+  /*
+   * Excel menyimpan waktu sebagai
+   * pecahan dari 1 hari.
+   *
+   * Pakai format [h]:mm supaya
+   * total > 24 jam tetap benar.
+   */
+  return value / (24 * 60);
+}
+
 function checkInLabel(
   mode: "OFFICE" | "PROJECT",
 
@@ -706,6 +717,190 @@ export async function GET(request: NextRequest) {
     return a.employee.name.localeCompare(b.employee.name, "id");
   });
 
+  type PersonnelRecap = {
+    employeeId: string;
+
+    employeeCode: string;
+
+    name: string;
+
+    active: boolean;
+
+    attendanceDays: number;
+
+    officeDays: number;
+
+    projectDays: number;
+
+    onTimeDays: number;
+
+    lateDays: number;
+
+    lateMinutes: number;
+
+    earlyLeaveDays: number;
+
+    earlyLeaveMinutes: number;
+
+    overtimeDays: number;
+
+    overtimeMinutes: number;
+
+    permissionDays: number;
+
+    sickDays: number;
+
+    annualLeaveDays: number;
+
+    officeCheckInTotalMinutes: number;
+
+    officeCheckInCount: number;
+
+    recordedDates: Set<string>;
+  };
+
+  const recapMap = new Map<string, PersonnelRecap>();
+
+  function getOrCreateRecap(employee: {
+    id: string;
+    employeeCode: string;
+    name: string;
+    active: boolean;
+  }) {
+    let recap = recapMap.get(employee.id);
+
+    if (!recap) {
+      recap = {
+        employeeId: employee.id,
+
+        employeeCode: employee.employeeCode,
+
+        name: employee.name,
+
+        active: employee.active,
+
+        attendanceDays: 0,
+
+        officeDays: 0,
+
+        projectDays: 0,
+
+        onTimeDays: 0,
+
+        lateDays: 0,
+
+        lateMinutes: 0,
+
+        earlyLeaveDays: 0,
+
+        earlyLeaveMinutes: 0,
+
+        overtimeDays: 0,
+
+        overtimeMinutes: 0,
+
+        permissionDays: 0,
+
+        sickDays: 0,
+
+        annualLeaveDays: 0,
+
+        officeCheckInTotalMinutes: 0,
+
+        officeCheckInCount: 0,
+
+        recordedDates: new Set<string>(),
+      };
+
+      recapMap.set(employee.id, recap);
+    }
+
+    return recap;
+  }
+
+  for (const item of attendanceDays) {
+    const recap = getOrCreateRecap(item.employee);
+
+    recap.attendanceDays += 1;
+
+    recap.recordedDates.add(item.attendanceDate.toISOString().slice(0, 10));
+
+    if (item.attendanceMode === "PROJECT") {
+      recap.projectDays += 1;
+
+      continue;
+    }
+
+    recap.officeDays += 1;
+
+    if (item.checkInStatus === "ON_TIME") {
+      recap.onTimeDays += 1;
+    }
+
+    if (item.checkInStatus === "LATE" || item.lateMinutes > 0) {
+      recap.lateDays += 1;
+    }
+
+    recap.lateMinutes += item.lateMinutes;
+
+    if (item.checkOutStatus === "EARLY_LEAVE" || item.earlyLeaveMinutes > 0) {
+      recap.earlyLeaveDays += 1;
+    }
+
+    recap.earlyLeaveMinutes += item.earlyLeaveMinutes;
+
+    /*
+     * Satu hari dihitung satu kali
+     * sebagai lembur meskipun status
+     * masuk dan pulang sama-sama
+     * OVERTIME.
+     */
+    if (
+      item.checkInStatus === "OVERTIME" ||
+      item.checkOutStatus === "OVERTIME" ||
+      item.overtimeMinutes > 0
+    ) {
+      recap.overtimeDays += 1;
+    }
+
+    recap.overtimeMinutes += item.overtimeMinutes;
+
+    const checkInMinutes = getJakartaMinutes(item.checkInAt);
+
+    if (checkInMinutes !== null) {
+      recap.officeCheckInTotalMinutes += checkInMinutes;
+
+      recap.officeCheckInCount += 1;
+    }
+  }
+
+  for (const item of leaveRows) {
+    const recap = getOrCreateRecap(item.employee);
+
+    recap.recordedDates.add(item.reportDate.toISOString().slice(0, 10));
+
+    switch (item.leaveType) {
+      case "PERMISSION":
+        recap.permissionDays += 1;
+
+        break;
+
+      case "SICK":
+        recap.sickDays += 1;
+
+        break;
+
+      case "ANNUAL_LEAVE":
+        recap.annualLeaveDays += 1;
+
+        break;
+    }
+  }
+
+  const personnelRecaps = Array.from(recapMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name, "id"),
+  );
+
   /*
    * ======================
    * RANKING & REWARD
@@ -1249,6 +1444,340 @@ export async function GET(request: NextRequest) {
 
   footerRow.getCell(1).font = {
     bold: true,
+  };
+
+  /*
+   * ======================
+   * SHEET REKAP PERSONEL
+   * ======================
+   */
+
+  const recapSheet = workbook.addWorksheet("Rekap Personel", {
+    views: [
+      {
+        state: "frozen",
+        ySplit: 6,
+      },
+    ],
+  });
+
+  recapSheet.mergeCells("A1:T1");
+
+  const recapTitle = recapSheet.getCell("A1");
+
+  recapTitle.value = "REKAP ABSENSI PERSONEL";
+
+  recapTitle.font = {
+    bold: true,
+    size: 16,
+  };
+
+  recapTitle.alignment = {
+    horizontal: "center",
+    vertical: "middle",
+  };
+
+  recapSheet.getRow(1).height = 26;
+
+  recapSheet.mergeCells("A2:T2");
+
+  recapSheet.getCell("A2").value = `Periode: ${formatDate(
+    fromDate,
+  )} - ${formatDate(toDate)}`;
+
+  recapSheet.mergeCells("A3:T3");
+
+  recapSheet.getCell("A3").value = `Jenis Personel: ${
+    employmentType === "EMPLOYEE"
+      ? "Karyawan"
+      : employmentType === "INTERN"
+        ? "Magang"
+        : "Semua Personel"
+  }`;
+
+  recapSheet.mergeCells("A4:T4");
+
+  recapSheet.getCell("A4").value = `Personel: ${
+    selectedEmployee
+      ? `${selectedEmployee.employeeCode} - ${selectedEmployee.name}`
+      : "Semua Personel"
+  } | Mode: ${
+    mode === "OFFICE"
+      ? "Kantor"
+      : mode === "PROJECT"
+        ? "In Project"
+        : "Semua Mode"
+  }`;
+
+  const recapHeader = recapSheet.getRow(6);
+
+  recapHeader.values = [
+    "Kode",
+
+    "Nama",
+
+    "Status",
+
+    "Hari Hadir",
+
+    "Kantor",
+
+    "In Project",
+
+    "Tepat Waktu",
+
+    "Terlambat",
+
+    "Total Terlambat",
+
+    "Rata-rata Terlambat",
+
+    "Pulang Awal",
+
+    "Total Pulang Awal",
+
+    "Lembur",
+
+    "Total Lembur",
+
+    "Izin",
+
+    "Sakit",
+
+    "Cuti",
+
+    "Total Tidak Hadir",
+
+    "Total Hari Tercatat",
+
+    "Rata-rata Masuk Kantor",
+  ];
+
+  recapHeader.font = {
+    bold: true,
+  };
+
+  recapHeader.height = 32;
+
+  recapHeader.alignment = {
+    horizontal: "center",
+    vertical: "middle",
+    wrapText: true,
+  };
+
+  recapHeader.eachCell((cell) => {
+    cell.fill = {
+      type: "pattern",
+
+      pattern: "solid",
+
+      fgColor: {
+        argb: "FFE5E7EB",
+      },
+    };
+
+    cell.border = {
+      top: {
+        style: "thin",
+      },
+
+      left: {
+        style: "thin",
+      },
+
+      bottom: {
+        style: "thin",
+      },
+
+      right: {
+        style: "thin",
+      },
+    };
+  });
+
+  const recapWidths = [
+    15, // Kode
+    28, // Nama
+    12, // Status
+    12,
+    10,
+    12,
+    14,
+    12,
+    18,
+    20,
+    14,
+    18,
+    12,
+    18,
+    10,
+    10,
+    10,
+    18,
+    18,
+    22,
+  ];
+
+  recapWidths.forEach((width, index) => {
+    recapSheet.getColumn(index + 1).width = width;
+  });
+
+  let recapRowNumber = 7;
+
+  for (const recap of personnelRecaps) {
+    const row = recapSheet.getRow(recapRowNumber);
+
+    const averageLateMinutes =
+      recap.lateDays > 0 ? recap.lateMinutes / recap.lateDays : 0;
+
+    const averageCheckIn =
+      recap.officeCheckInCount > 0
+        ? recap.officeCheckInTotalMinutes / recap.officeCheckInCount
+        : null;
+
+    const totalLeaveDays =
+      recap.permissionDays + recap.sickDays + recap.annualLeaveDays;
+
+    row.values = [
+      recap.employeeCode,
+
+      recap.name,
+
+      recap.active ? "Aktif" : "Nonaktif",
+
+      recap.attendanceDays,
+
+      recap.officeDays,
+
+      recap.projectDays,
+
+      recap.onTimeDays,
+
+      recap.lateDays,
+
+      minutesToExcelDuration(recap.lateMinutes),
+
+      minutesToExcelDuration(averageLateMinutes),
+
+      recap.earlyLeaveDays,
+
+      minutesToExcelDuration(recap.earlyLeaveMinutes),
+
+      recap.overtimeDays,
+
+      minutesToExcelDuration(recap.overtimeMinutes),
+
+      recap.permissionDays,
+
+      recap.sickDays,
+
+      recap.annualLeaveDays,
+
+      totalLeaveDays,
+
+      recap.recordedDates.size,
+
+      minutesToClock(averageCheckIn),
+    ];
+
+    /*
+     * Kolom durasi.
+     *
+     * [h]:mm penting supaya
+     * misalnya 27 jam lembur
+     * tidak berubah menjadi 03:00.
+     */
+    for (const columnNumber of [9, 10, 12, 14]) {
+      row.getCell(columnNumber).numFmt = "[h]:mm";
+    }
+
+    row.alignment = {
+      vertical: "middle",
+    };
+
+    row.eachCell(
+      {
+        includeEmpty: true,
+      },
+
+      (cell) => {
+        cell.border = {
+          top: {
+            style: "hair",
+          },
+
+          left: {
+            style: "hair",
+          },
+
+          bottom: {
+            style: "hair",
+          },
+
+          right: {
+            style: "hair",
+          },
+        };
+      },
+    );
+
+    recapRowNumber += 1;
+  }
+
+  if (personnelRecaps.length > 0) {
+    const firstDataRow = 7;
+
+    const lastDataRow = recapRowNumber - 1;
+
+    const totalRow = recapSheet.getRow(recapRowNumber);
+
+    totalRow.getCell(1).value = "TOTAL";
+
+    recapSheet.mergeCells(`A${recapRowNumber}:C${recapRowNumber}`);
+
+    /*
+     * Jumlahkan kolom angka
+     * dari Hari Hadir sampai
+     * Total Hari Tercatat.
+     */
+    for (let column = 4; column <= 19; column += 1) {
+      /*
+       * Rata-rata terlambat
+       * jangan dijumlahkan.
+       */
+      if (column === 10) {
+        continue;
+      }
+
+      totalRow.getCell(column).value = {
+        formula: `SUM(${recapSheet.getColumn(column).letter}${firstDataRow}:${
+          recapSheet.getColumn(column).letter
+        }${lastDataRow})`,
+      };
+    }
+
+    for (const column of [9, 12, 14]) {
+      totalRow.getCell(column).numFmt = "[h]:mm";
+    }
+
+    totalRow.font = {
+      bold: true,
+    };
+
+    totalRow.fill = {
+      type: "pattern",
+
+      pattern: "solid",
+
+      fgColor: {
+        argb: "FFDBEAFE",
+      },
+    };
+  }
+
+  recapSheet.autoFilter = {
+    from: "A6",
+    to: "T6",
   };
 
   /*
