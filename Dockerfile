@@ -1,13 +1,16 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate
+
+# Prisma 7 reads DATABASE_URL while loading prisma.config.ts.
+# This build-only URL is intentionally non-secret and is not copied to the runtime stage.
+ENV DATABASE_URL=postgresql://absensi:build-only@127.0.0.1:5432/absensi?schema=public
 RUN npm run build
 
 FROM node:22-alpine AS runner
