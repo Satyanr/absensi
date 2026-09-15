@@ -33,10 +33,26 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-absensi}:${POSTGRES_PASSWORD:-change-me-local-only}@postgres:5432/${POSTGRES_DB:-absensi}?schema=public"
     volumes:
       - attendance_photos:/app/storage/attendance
-      - ./storage/attendance-archive:/app/storage/attendance-archive:ro
+      - "${ATTENDANCE_ARCHIVE_HOST_PATH:-./storage/attendance-archive}:/app/storage/attendance-archive:ro"
       - leave_files:/app/storage/leave
     ports:
       - "3000:3000"
+
+  photo-archiver:
+    image: alpine:3.22
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - attendance_photos:/photos
+      - "${ATTENDANCE_ARCHIVE_HOST_PATH:-./storage/attendance-archive}:/archive"
+      - ./scripts/archive-attendance-photos.sh:/usr/local/bin/archive-attendance-photos.sh:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      while true; do
+        /bin/sh /usr/local/bin/archive-attendance-photos.sh;
+        sleep "$${ATTENDANCE_ARCHIVE_INTERVAL_SECONDS:-604800}";
+      done
 
   tunnel:
     image: cloudflare/cloudflared:latest

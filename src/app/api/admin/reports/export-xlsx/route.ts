@@ -247,6 +247,17 @@ function getExcelImageExtension(
   }
 }
 
+function resolveStoragePath(root: string, storagePath: string) {
+  const absolutePath = path.resolve(root, storagePath);
+  const relativePath = path.relative(root, absolutePath);
+
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    return null;
+  }
+
+  return absolutePath;
+}
+
 async function addPhotoToExcel(
   workbook: ExcelJS.Workbook,
   worksheet: ExcelJS.Worksheet,
@@ -280,37 +291,46 @@ async function addPhotoToExcel(
     return;
   }
 
-  const configuredRoot =
+  const activeConfiguredRoot =
     process.env.ATTENDANCE_STORAGE_PATH ?? "./storage/attendance";
 
-  const storageRoot = path.isAbsolute(configuredRoot)
-    ? configuredRoot
-    : path.resolve(
-        /*turbopackIgnore: true*/
-        process.cwd(),
-        configuredRoot,
-      );
+  const archiveConfiguredRoot =
+    process.env.ATTENDANCE_ARCHIVE_PATH ?? "./storage/attendance-archive";
 
-  const absolutePath = path.resolve(
-    /*turbopackIgnore: true*/
-    storageRoot,
-    photo.storagePath,
-  );
+  const activeRoot = path.isAbsolute(activeConfiguredRoot)
+    ? activeConfiguredRoot
+    : path.resolve(process.cwd(), activeConfiguredRoot);
 
-  const relative = path.relative(storageRoot, absolutePath);
+  const archiveRoot = path.isAbsolute(archiveConfiguredRoot)
+    ? archiveConfiguredRoot
+    : path.resolve(process.cwd(), archiveConfiguredRoot);
 
-  /*
-   * Proteksi path traversal.
-   */
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+  const activePath = resolveStoragePath(activeRoot, photo.storagePath);
+  const archivePath = resolveStoragePath(archiveRoot, photo.storagePath);
+
+  if (!activePath || !archivePath) {
     cell.value = "Path foto tidak valid";
 
     return;
   }
 
-  try {
-    const buffer = await readFile(absolutePath);
+  let buffer: Buffer;
 
+  try {
+    buffer = await readFile(activePath);
+  } catch {
+    try {
+      buffer = await readFile(archivePath);
+    } catch (error) {
+      console.error(error);
+
+      cell.value = "Foto tidak ditemukan";
+
+      return;
+    }
+  }
+
+  try {
     /*
      * Pakai base64 agar tidak bentrok
      * antara typing Buffer ExcelJS
@@ -350,7 +370,7 @@ async function addPhotoToExcel(
   } catch (error) {
     console.error(error);
 
-    cell.value = "Foto tidak ditemukan";
+    cell.value = "Gagal menanam foto";
   }
 }
 
