@@ -104,54 +104,43 @@ export async function GET(_request: Request, context: RouteContext) {
     );
   }
 
-  const configuredRoot =
+  const activeConfiguredRoot =
     process.env.ATTENDANCE_STORAGE_PATH ?? "./storage/attendance";
 
-  const storageRoot = path.isAbsolute(configuredRoot)
-    ? configuredRoot
-    : path.resolve(
-        /*turbopackIgnore: true*/
-        process.cwd(),
-        configuredRoot,
-      );
+  const archiveConfiguredRoot =
+    process.env.ATTENDANCE_ARCHIVE_PATH ?? "./storage/attendance-archive";
 
-  const absolutePath = path.resolve(
-    /*turbopackIgnore: true*/
-    storageRoot,
-    event.photo.storagePath,
-  );
+  const activeRoot = path.isAbsolute(activeConfiguredRoot)
+    ? activeConfiguredRoot
+    : path.resolve(process.cwd(), activeConfiguredRoot);
 
-  /*
-   * Proteksi path traversal.
-   */
-  const relative = path.relative(storageRoot, absolutePath);
+  const archiveRoot = path.isAbsolute(archiveConfiguredRoot)
+    ? archiveConfiguredRoot
+    : path.resolve(process.cwd(), archiveConfiguredRoot);
 
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    return NextResponse.json(
-      {
-        error: "Path foto tidak valid.",
-      },
-      {
-        status: 400,
-      },
-    );
-  }
+  const activePath = path.resolve(activeRoot, event.photo.storagePath);
+
+  const archivePath = path.resolve(archiveRoot, event.photo.storagePath);
 
   let file: Buffer;
 
   try {
-    file = await readFile(absolutePath);
-  } catch (error) {
-    console.error(error);
-
-    return NextResponse.json(
-      {
-        error: "File foto tidak ditemukan di penyimpanan.",
-      },
-      {
-        status: 404,
-      },
-    );
+    // Prioritas pertama: Docker volume
+    file = await readFile(activePath);
+  } catch {
+    try {
+      // Kalau sudah dipindahkan, baca archive lokal
+      file = await readFile(archivePath);
+    } catch {
+      return NextResponse.json(
+        {
+          error: "File foto tidak ditemukan di penyimpanan.",
+        },
+        {
+          status: 404,
+        },
+      );
+    }
   }
 
   const typeLabel = event.eventType === "CHECK_IN" ? "masuk" : "pulang";

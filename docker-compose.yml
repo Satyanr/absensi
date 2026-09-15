@@ -41,6 +41,7 @@ services:
 
     volumes:
       - attendance_photos:/app/storage/attendance
+      - ./storage/attendance-archive:/app/storage/attendance-archive:ro
       - leave_files:/app/storage/leave
 
     ports:
