@@ -2,19 +2,15 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
-
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-absensi}
       POSTGRES_USER: ${POSTGRES_USER:-absensi}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
       TZ: Asia/Jakarta
-
     ports:
       - "5432:5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
     healthcheck:
       test:
         [
@@ -28,52 +24,40 @@ services:
   app:
     build: .
     restart: unless-stopped
-
     depends_on:
       postgres:
         condition: service_healthy
-
     env_file:
       - .env
-
     environment:
-      DATABASE_URL: postgresql://absensi:change-me-local-only@postgres:5432/absensi?schema=public
-
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-absensi}:${POSTGRES_PASSWORD:-change-me-local-only}@postgres:5432/${POSTGRES_DB:-absensi}?schema=public"
     volumes:
       - attendance_photos:/app/storage/attendance
       - ./storage/attendance-archive:/app/storage/attendance-archive:ro
       - leave_files:/app/storage/leave
-
     ports:
       - "3000:3000"
 
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
-
     depends_on:
       - app
-
     command: tunnel --no-autoupdate --url http://app:3000
 
   backup:
     image: postgres:17-alpine
     restart: unless-stopped
-
     depends_on:
       postgres:
         condition: service_healthy
-
     env_file:
       - .env
-
     volumes:
       - ./storage/backup:/backup
       - attendance_photos:/photos:ro
       - leave_files:/leave:ro
-
     entrypoint: ["/bin/sh", "-c"]
-
     command: >-
       while true; do
         stamp=$$(date +%Y%m%d-%H%M%S);

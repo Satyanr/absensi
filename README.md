@@ -1,119 +1,93 @@
 # Sistem Absensi Karyawan
 
-Aplikasi absensi internal berbasis web untuk mencatat kehadiran karyawan, absensi kantor dengan GPS/geofence dan selfie, absensi **In Project**, pengajuan izin/sakit/cuti, pengelolaan karyawan & user, notifikasi email, serta laporan periode yang dapat diekspor.
+Aplikasi absensi internal berbasis web untuk mencatat kehadiran personel, absensi kantor dengan GPS/geofence dan selfie, absensi **In Project**, pengajuan izin/sakit/cuti, pengelolaan personel & user, notifikasi email, serta laporan periode yang dapat diekspor.
 
-> Stack utama: **Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · PostgreSQL 17 · Prisma 7 · Zod · Docker Compose · Cloudflare Quick Tunnel**
+> Stack utama: **Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · PostgreSQL 17 · Prisma 7 · Docker Compose**
 
 ## Fitur Utama
 
-### Karyawan
-
-- Pencarian karyawan menggunakan kode seperti `EMP000`.
-- Absensi **Kantor** dengan:
-  - GPS berakurasi tinggi.
-  - Validasi geofence kantor.
-  - Reverse geocoding alamat melalui Geoapify (bila API key tersedia).
-  - Selfie melalui kamera browser atau fallback file capture.
-  - Absen masuk dan absen pulang.
-- Absensi **In Project**:
-  - Jam fleksibel.
-  - GPS bersifat opsional saat check-in.
-  - Tidak membutuhkan absen pulang.
-- Status absensi hari ini ditampilkan setelah identitas karyawan ditemukan.
+- Absensi Kantor dengan GPS/geofence, reverse geocoding, selfie, check-in, dan check-out.
+- Absensi **In Project** dengan jam fleksibel.
+- Personel **Karyawan** dan **Magang**.
 - Pengajuan **Izin / Sakit / Cuti** tanpa login employee.
-- Kode karyawan pada halaman pengajuan otomatis menggunakan prefix `EMP`.
-- Pengajuan Izin/Sakit dapat melampirkan gambar atau PDF maksimal 5 MB.
-- Pengajuan Cuti Tahunan dapat:
-  1. membuat/download Form Pengajuan Cuti `.docx`,
-  2. dilengkapi manual,
-  3. di-upload kembali untuk proses persetujuan admin.
-
-### Admin & Leader
-
-- Dashboard kehadiran hari ini.
-- Ringkasan karyawan aktif, hadir, kantor, In Project, dan terlambat.
-- Pengelolaan data karyawan: tambah, edit, cari, aktif/nonaktif.
-- Pengelolaan akun **Admin** dan **Leader** (khusus Admin).
-- Pengelolaan izin/sakit/cuti:
-  - pencarian berdasarkan nama, kode karyawan, atau alasan,
-  - approval/rejection,
-  - saldo cuti,
-  - penyesuaian pengajuan,
-  - lampiran pemohon,
-  - dokumen final cuti.
-- Histori notifikasi email dengan status Pending / Terkirim / Gagal dan retry untuk email gagal.
-- Laporan berdasarkan:
-  - tanggal awal & akhir,
-  - karyawan,
-  - mode absensi (Semua / Kantor / In Project).
+- Admin/Leader untuk dashboard, data personel, approval, saldo cuti, notifikasi, dan laporan.
 - Ekspor **Excel Lengkap** dan **CSV Ringkas**.
-- Laporan menggabungkan data absensi dan pengajuan Izin/Sakit/Cuti yang sudah disetujui.
-- Foto masuk/pulang dan lokasi dapat dilihat dari detail laporan bila tersedia.
+- Rekap Excel mencakup keterlambatan, pulang awal, lembur, izin, sakit, dan cuti.
 
 ## Hak Akses
 
-| Role | Dashboard | Karyawan | User | Notifikasi | Laporan | Izin & Cuti |
+| Role | Dashboard | Personel | User | Notifikasi | Laporan | Izin & Cuti |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
 | Admin | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Leader | ✓ | ✓ | — | — | ✓ | ✓ |
-| Employee | Halaman publik absensi | — | — | — | — | Halaman publik pengajuan |
+| Employee | Halaman publik | — | — | — | — | Halaman publik |
 
-## Teknologi
+# Clone & Setup di Device Baru
 
-- **Frontend/Backend**: Next.js App Router, React, TypeScript
-- **UI**: Tailwind CSS
-- **Database**: PostgreSQL
-- **ORM**: Prisma
-- **Validation**: Zod
-- **Authentication**: session cookie HTTP-only dengan opaque token
-- **Password hashing**: bcrypt
-- **Spreadsheet export**: ExcelJS
-- **Document generation**: docxtemplater + PizZip
-- **Email**: Nodemailer / SMTP
-- **Runtime**: Docker Compose
-- **Public HTTPS (opsional/dev)**: Cloudflare Quick Tunnel
+Panduan ini berlaku untuk **Windows, macOS, dan Linux**. Untuk hasil paling konsisten antar-device, gunakan **Docker Compose**.
 
-## Struktur Halaman
+## 1. Persyaratan
 
-```text
-/
-├─ /                     # Absensi karyawan
-├─ /leave                # Izin / Sakit / Cuti
-└─ /admin
-   ├─ /login
-   ├─ /dashboard
-   ├─ /employees
-   ├─ /users             # Admin only
-   ├─ /notifications     # Admin only
-   ├─ /reports
-   └─ /leaves
-```
+### Direkomendasikan: Docker
 
-## Persyaratan
+Install:
 
-### Opsi Docker
-
-- Docker Engine / Docker Desktop
+- Git
+- Docker Desktop (Windows/macOS) atau Docker Engine (Linux)
 - Docker Compose v2
 
-### Opsi Development Lokal
+Cek:
 
-- Node.js yang kompatibel dengan Next.js 16
+```bash
+git --version
+docker --version
+docker compose version
+```
+
+### Development lokal
+
+Tambahan:
+
+- **Node.js 22**
 - npm
-- PostgreSQL 17 (atau kompatibel)
 
-## Environment
+Repository menyediakan `.nvmrc`.
 
-Salin file contoh:
+```bash
+nvm install 22
+nvm use 22
+node --version
+npm --version
+```
+
+## 2. Clone Repository
+
+```bash
+git clone https://github.com/Satyanr/absensi.git
+cd absensi
+git pull origin main
+```
+
+## 3. Buat `.env`
+
+`.env` tidak disimpan di Git dan harus dibuat di setiap device.
+
+### Windows PowerShell
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+```
+
+### macOS / Linux
 
 ```bash
 cp .env.example .env
 ```
 
-Konfigurasi penting:
+Konfigurasi dasar:
 
 ```env
-NODE_ENV=development
 APP_URL=http://localhost:3000
 APP_TIMEZONE=Asia/Jakarta
 SESSION_COOKIE_NAME=absensi_session
@@ -127,7 +101,11 @@ DATABASE_URL=postgresql://absensi:change-me-local-only@localhost:5432/absensi?sc
 SEED_ADMIN_EMAIL=admin@example.local
 SEED_ADMIN_PASSWORD=ChangeMe123!
 SEED_ADMIN_NAME=Administrator
+```
 
+Konfigurasi opsional:
+
+```env
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_SECURE=true
@@ -137,9 +115,6 @@ MAIL_FROM_NAME=Sistem Absensi
 MAIL_FROM_EMAIL=
 
 GEOAPIFY_API_KEY=
-MAX_OFFICE_GPS_ACCURACY_METERS=500
-MAX_GPS_AGE_SECONDS=120
-MAX_GPS_FUTURE_SKEW_SECONDS=30
 
 OFFICE_JAKARTA_LATITUDE=
 OFFICE_JAKARTA_LONGITUDE=
@@ -151,7 +126,32 @@ OFFICE_SURABAYA_LATITUDE=
 OFFICE_SURABAYA_LONGITUDE=
 ```
 
-### Default akun seed untuk development
+> Jangan commit `.env`, password, SMTP credential, atau API key ke Git.
+
+# Menjalankan dengan Docker Compose
+
+## 1. Build dan jalankan
+
+```bash
+docker compose up -d --build
+```
+
+Container aplikasi otomatis menjalankan Prisma migration saat startup.
+
+Cek:
+
+```bash
+docker compose ps
+docker compose logs -f app
+```
+
+## 2. Seed database baru
+
+```bash
+docker compose exec app npm run db:seed
+```
+
+Default development seed:
 
 ```text
 Email    : admin@example.local
@@ -160,45 +160,98 @@ Password : ChangeMe123!
 Role     : ADMIN
 ```
 
-> **Wajib diganti sebelum digunakan di lingkungan production.**
+Ganti credential sebelum production.
 
-## Menjalankan dengan Docker Compose
+## 3. Akses
+
+```text
+Aplikasi : http://localhost:3000
+Admin    : http://localhost:3000/admin/login
+Health   : http://localhost:3000/api/health
+```
+
+## 4. Verifikasi clean build
 
 ```bash
+docker compose build --no-cache app
+```
+
+# Development Lokal
+
+Gunakan ini bila Next.js dijalankan langsung dari host dan PostgreSQL menggunakan Docker.
+
+```bash
+docker compose up -d postgres
+npm ci
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+Untuk mode ini, `DATABASE_URL` harus mengarah ke `localhost:5432`.
+
+Gunakan **`npm ci`**, bukan `npm install`, untuk instalasi normal dari repository agar dependency mengikuti `package-lock.json`.
+
+# Pemeriksaan Sebelum Commit
+
+```bash
+npm ci
+npm run check
+```
+
+`npm run check` menjalankan ESLint dan production build.
+
+Untuk perubahan Docker/dependency:
+
+```bash
+docker compose config
+docker compose build --no-cache app
+```
+
+# Update Repository yang Sudah Pernah Di-clone
+
+Development lokal:
+
+```bash
+git status
+git pull origin main
+npm ci
+```
+
+Docker:
+
+```bash
+git pull origin main
 docker compose up -d --build
 ```
 
-Jalankan migration database:
+# Storage
 
-```bash
-docker compose exec app npm run db:deploy
-```
+Runtime file tidak disimpan di Git.
 
-Jalankan seed awal:
+- Foto absensi: `storage/attendance`
+- Lampiran izin/sakit/cuti: `storage/leave`
+- Backup: `storage/backup`
+- Template cuti: `resources/templates/form-pengajuan-cuti.docx`
 
-```bash
-docker compose exec app npm run db:seed
-```
+Docker Compose menggunakan volume terpisah untuk foto absensi dan file leave agar data tidak hilang saat container dibuat ulang.
 
-Aplikasi lokal:
+# Backup
 
-```text
-http://localhost:3000
-```
-
-Admin:
+Service `backup` berjalan setiap 24 jam dan menghapus backup lebih lama dari 14 hari.
 
 ```text
-http://localhost:3000/admin/login
+storage/backup/db-YYYYMMDD-HHMMSS.dump
+storage/backup/photos-YYYYMMDD-HHMMSS.tar.gz
+storage/backup/leave-YYYYMMDD-HHMMSS.tar.gz
 ```
 
-Health check:
+Simpan salinan backup penting di luar device/server utama.
 
-```text
-http://localhost:3000/api/health
-```
+# Cloudflare Quick Tunnel
 
-### URL HTTPS Cloudflare Quick Tunnel
+Untuk development/testing:
 
 ```bash
 docker compose logs tunnel
@@ -210,29 +263,9 @@ Cari URL seperti:
 https://xxxxx.trycloudflare.com
 ```
 
-> Quick Tunnel cocok untuk development/testing. URL **tidak permanen** dan dapat berubah setelah tunnel dibuat ulang atau container restart.
+Quick Tunnel bukan hostname production permanen dan URL dapat berubah.
 
-## Development Lokal
-
-Jalankan PostgreSQL:
-
-```bash
-docker compose up -d postgres
-```
-
-Pastikan `DATABASE_URL` mengarah ke `localhost:5432`, lalu:
-
-```bash
-npm install
-npm run db:generate
-npm run db:migrate
-npm run db:seed
-npm run dev
-```
-
-## Kebijakan Absensi Default
-
-Seed membuat policy default:
+# Kebijakan Absensi Default
 
 | Pengaturan | Nilai |
 |---|---|
@@ -243,71 +276,54 @@ Seed membuat policy default:
 | Timezone | Asia/Jakarta |
 | Weekend | dihitung lembur |
 
-Lokasi kantor (Jakarta, Bandung, Jogja, Surabaya) hanya dibuat apabila koordinat masing-masing sudah diisi melalui environment variable. Radius seed default adalah **1.000 meter**.
+Lokasi Jakarta, Bandung, Jogja, dan Surabaya hanya dibuat jika koordinat environment sudah diisi. Radius default seed adalah **1.000 meter**.
 
-## Storage
-
-- Foto absensi: `storage/attendance`
-- Lampiran izin/sakit/cuti: `storage/leave`
-- Backup: `storage/backup`
-- Template cuti: `resources/templates/form-pengajuan-cuti.docx`
-
-File upload disimpan di filesystem, sedangkan metadata/path/checksum disimpan di database.
-
-## Backup
-
-Service `backup` pada Docker Compose melakukan backup setiap 24 jam dan menghapus file lebih tua dari 14 hari.
-
-Backup yang saat ini dibuat:
-
-```text
-storage/backup/db-YYYYMMDD-HHMMSS.dump
-storage/backup/photos-YYYYMMDD-HHMMSS.tar.gz
-```
-
-> **Catatan:** pada konfigurasi Docker Compose saat ini, backup volume baru mencakup database dan `attendance_photos`. Lampiran `storage/leave` belum dipasang sebagai volume backup terpisah.
-
-## Keamanan
-
-- Session menggunakan opaque random token.
-- Browser menerima session melalui cookie HTTP-only.
-- Database menyimpan hash token, bukan raw session token.
-- Password menggunakan bcrypt.
-- Validasi file memeriksa signature/isi file, tidak hanya ekstensi/MIME browser.
-- Foto/lampiran tidak disimpan sebagai binary database.
-- Endpoint admin memiliki pemeriksaan role.
-
-### Hal yang wajib dibereskan sebelum production
-
-1. **Jangan commit file upload karyawan ke Git.**
-   Tambahkan `storage/leave/*` ke `.gitignore` (dengan `.gitkeep` bila diperlukan) dan pindahkan file yang sudah terlanjur masuk Git/history.
-2. **Persist `storage/leave` sebagai volume Docker** dan masukkan ke strategi backup.
-3. **Perbaiki wiring password database pada Docker Compose.** Saat ini `app.environment.DATABASE_URL` masih menggunakan password `change-me-local-only` secara hard-coded. Jika `POSTGRES_PASSWORD` diubah, URL aplikasi juga harus konsisten.
-4. Ganti akun/password seed default.
-5. Gunakan SMTP credential production yang aman dan jangan commit `.env`.
-6. Quick Tunnel bukan hostname production permanen; gunakan tunnel/hostname permanen apabila URL stabil menjadi kebutuhan.
-
-## Known Notes pada Repository Saat Ini
-
-- README lama masih mendeskripsikan project sebagai "Phase 1", sementara fitur attendance, admin CRUD, laporan, izin/cuti, email notification, dan UI sudah tersedia.
-- `storage/leave` belum tercakup oleh `.gitignore` maupun volume backup di Docker Compose.
-- `docker-compose.yml` meng-override `DATABASE_URL` aplikasi dengan password default hard-coded.
-
-README ini sengaja mendokumentasikan kondisi aplikasi saat ini dan menandai gap deployment yang perlu dibereskan, bukan menyembunyikannya.
-
-## Scripts
+# Scripts
 
 ```bash
-npm run dev          # development server
-npm run build        # production build
-npm run start        # production server
+npm run dev          # Development server
+npm run check        # ESLint + production build
+npm run build        # Production build
+npm run start        # Production server
 npm run lint         # ESLint
 npm run db:generate  # Prisma generate
 npm run db:migrate   # Prisma migrate dev
 npm run db:deploy    # Prisma migrate deploy
-npm run db:seed      # seed admin/policy/offices
+npm run db:seed      # Seed admin, policy, lokasi kantor
 ```
 
-## Lisensi
+# Troubleshooting Fresh Clone
 
-Repository saat ini belum mendefinisikan file lisensi. Tambahkan `LICENSE` apabila project akan didistribusikan atau digunakan di luar lingkungan internal.
+### `npm ci` gagal karena lockfile tidak sinkron
+
+Perbaiki dan commit `package-lock.json`. Jangan mengganti workflow normal menjadi `npm install` hanya untuk menghindari error.
+
+### `eslint` tidak ditemukan
+
+Pastikan `npm ci` selesai tanpa error.
+
+### Database tidak terhubung
+
+- Development lokal: host database `localhost`.
+- Container app: Docker Compose otomatis memakai host `postgres`.
+
+Pastikan `POSTGRES_DB`, `POSTGRES_USER`, dan `POSTGRES_PASSWORD` konsisten.
+
+### Port 3000 atau 5432 sudah dipakai
+
+Hentikan service lain yang memakai port tersebut atau ubah port mapping lokal.
+
+### Docker memakai source/build lama
+
+```bash
+docker compose build --no-cache app
+docker compose up -d app
+```
+
+# Catatan Production
+
+- Ganti credential default.
+- Simpan SMTP/API key di environment/secret manager.
+- Gunakan hostname/tunnel permanen.
+- Backup database dan storage ke lokasi eksternal.
+- Jangan commit `.env`, foto absensi, dokumen cuti, atau data runtime ke Git.

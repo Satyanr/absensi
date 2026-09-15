@@ -1,19 +1,21 @@
-node_modules
-.next
+# Dependencies / build output
+node_modules/
+.next/
+coverage/
+npm-debug.log*
+*.tsbuildinfo
+
+# Local environment files
 .env
 .env.local
-npm-debug.log*
-coverage
+.env.*.local
 
-storage/attendance/*
+# Runtime storage (keep directory placeholders only)
+storage/attendance/**
 !storage/attendance/.gitkeep
 
-storage/backup/*
-!storage/backup/.gitkeep
-
-storage/leave/*
+storage/leave/**
 !storage/leave/.gitkeep
 
-Tambahkan file kosong:
-
-storage/leave/.gitkeep
+storage/backup/**
+!storage/backup/.gitkeep
