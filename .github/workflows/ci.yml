@@ -24,11 +24,13 @@ jobs:
           --health-retries 15
     env:
       DATABASE_URL: postgresql://absensi:ci-only-password@localhost:5432/absensi?schema=public
+      TEST_DATABASE_URL: postgresql://absensi:ci-only-password@localhost:5432/absensi?schema=public
       APP_URL: http://localhost:3000
       APP_TIMEZONE: Asia/Jakarta
       SEED_ADMIN_EMAIL: admin@example.local
       SEED_ADMIN_PASSWORD: ChangeMe123!
       SEED_ADMIN_NAME: Administrator
+      SEED_ADMIN_USERNAME: admin
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -38,6 +40,8 @@ jobs:
       - run: npm ci
       - run: npm run db:deploy
       - run: npm run db:seed
+      - run: npm run db:seed
+      - run: npm run test:integration
       - run: npm run check
 
   docker-build:

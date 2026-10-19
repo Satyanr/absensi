@@ -30,6 +30,7 @@ services:
     env_file:
       - .env
     environment:
+      NODE_ENV: production
       DATABASE_URL: "postgresql://${POSTGRES_USER:-absensi}:${POSTGRES_PASSWORD:-change-me-local-only}@postgres:5432/${POSTGRES_DB:-absensi}?schema=public"
     volumes:
       - attendance_photos:/app/storage/attendance
@@ -40,6 +41,7 @@ services:
 
   tunnel:
     image: cloudflare/cloudflared:latest
+    profiles: [cloudflare]
     restart: unless-stopped
     depends_on:
       - app
@@ -55,23 +57,11 @@ services:
       - .env
     volumes:
       - ./storage/backup:/backup
+      - ./scripts/backup.sh:/usr/local/bin/absensi-backup.sh:ro
       - attendance_photos:/photos:ro
+      - ./storage/attendance-archive:/photos-archive:ro
       - leave_files:/leave:ro
-    entrypoint: ["/bin/sh", "-c"]
-    command: >-
-      while true; do
-        stamp=$$(date +%Y%m%d-%H%M%S);
-        PGPASSWORD=$$POSTGRES_PASSWORD pg_dump
-        -h postgres
-        -U $$POSTGRES_USER
-        -d $$POSTGRES_DB
-        -Fc
-        -f /backup/db-$$stamp.dump;
-        tar -czf /backup/photos-$$stamp.tar.gz -C /photos .;
-        tar -czf /backup/leave-$$stamp.tar.gz -C /leave .;
-        find /backup -type f -mtime +14 -delete;
-        sleep 86400;
-      done
+    entrypoint: ["/bin/sh", "/usr/local/bin/absensi-backup.sh"]
 
 volumes:
   postgres_data:

@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import path from "node:path";
+import { unlink } from "node:fs/promises";
+import { deleteLeaveRequest } from "@/lib/leave/delete";
 
 import { Prisma } from "@/generated/prisma/client";
 
@@ -614,5 +617,88 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         status: 500,
       },
     );
+  }
+}
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Belum login." }, { status: 401 });
+  }
+  if (user.role !== "ADMIN" && user.role !== "LEADER") {
+    return NextResponse.json(
+      { error: "Hanya Admin atau Leader yang dapat menghapus pengajuan." },
+      { status: 403 },
+    );
+  }
+
+  const { id } = await context.params;
+  try {
+    const result = await prisma.$transaction(
+      (tx) => deleteLeaveRequest(tx, id, {
+        actorId: user.id,
+        ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+        userAgent: request.headers.get("user-agent"),
+      }),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+
+    // File removal must happen after commit so a rolled-back deletion keeps
+    // its documents. Restrict removal to files inside the leave storage root.
+    const storageRoot = path.resolve(
+      /*turbopackIgnore: true*/
+      process.cwd(),
+      process.env.LEAVE_STORAGE_PATH ?? "./storage/leave",
+    );
+    let fileCleanupPending = false;
+    for (const file of result.files) {
+      if (file.storageDisk !== "local") continue;
+      const absolutePath = path.resolve(storageRoot, file.storagePath);
+      const relativePath = path.relative(storageRoot, absolutePath);
+      if (!relativePath || relativePath === ".." || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath)) {
+        console.error("Lokasi lampiran di luar folder penyimpanan:", file.storagePath);
+        fileCleanupPending = true;
+        continue;
+      }
+      try {
+        await unlink(absolutePath);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          console.error("Gagal membersihkan file pengajuan:", error);
+          fileCleanupPending = true;
+        }
+      }
+    }
+
+    const days = result.balanceReturned.reduce((total, item) => total + item.days, 0);
+    return NextResponse.json({
+      ok: true,
+      message: `Pengajuan berhasil dihapus. Status ketidakhadiran pada tanggal terkait telah dibersihkan.${days > 0 ? ` ${days} hari dikembalikan ke saldo cuti.` : ""}${fileCleanupPending ? " Sebagian file lampiran belum dapat dibersihkan dari penyimpanan." : ""}`,
+      balanceReturned: result.balanceReturned,
+      attendanceDaysDeleted: result.attendanceDaysDeleted,
+      fileCleanupPending,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "LEAVE_NOT_FOUND") {
+      return NextResponse.json({ error: "Pengajuan tidak ditemukan atau sudah dihapus." }, { status: 404 });
+    }
+    if (error instanceof Error && error.message.startsWith("BALANCE_INVALID:")) {
+      const year = error.message.split(":")[1];
+      return NextResponse.json(
+        { error: `Saldo cuti tahun ${year} tidak konsisten. Penghapusan dibatalkan agar saldo tidak salah.` },
+        { status: 409 },
+      );
+    }
+    if (
+      (error instanceof Error && error.message === "LEAVE_CHANGED") ||
+      (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034")
+    ) {
+      return NextResponse.json(
+        { error: "Data berubah bersamaan. Muat ulang halaman dan coba hapus kembali." },
+        { status: 409 },
+      );
+    }
+    console.error(error);
+    return NextResponse.json({ error: "Gagal menghapus pengajuan." }, { status: 500 });
   }
 }

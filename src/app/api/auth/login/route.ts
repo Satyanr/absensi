@@ -3,8 +3,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validation/auth";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(request: NextRequest) {
+  const limited = enforceRateLimit(request, {
+    scope: "login-ip",
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+    message: "Terlalu banyak percobaan login. Silakan tunggu beberapa saat.",
+  });
+  if (limited) return limited;
+
   const parsed = loginSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "Input login tidak valid." }, { status: 400 });

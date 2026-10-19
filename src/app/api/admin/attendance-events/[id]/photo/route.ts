@@ -112,11 +112,11 @@ export async function GET(_request: Request, context: RouteContext) {
 
   const activeRoot = path.isAbsolute(activeConfiguredRoot)
     ? activeConfiguredRoot
-    : path.resolve(process.cwd(), activeConfiguredRoot);
+    : path.resolve(/*turbopackIgnore: true*/ process.cwd(), activeConfiguredRoot);
 
   const archiveRoot = path.isAbsolute(archiveConfiguredRoot)
     ? archiveConfiguredRoot
-    : path.resolve(process.cwd(), archiveConfiguredRoot);
+    : path.resolve(/*turbopackIgnore: true*/ process.cwd(), archiveConfiguredRoot);
 
   const activePath = path.resolve(activeRoot, event.photo.storagePath);
 

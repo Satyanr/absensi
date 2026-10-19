@@ -77,14 +77,37 @@ async function main() {
   const email = process.env.SEED_ADMIN_EMAIL ?? "admin@example.local";
   const password = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
   const name = process.env.SEED_ADMIN_NAME ?? "Administrator";
+  const username = process.env.SEED_ADMIN_USERNAME ?? "admin";
+
+  if (password.length < 4 || password.length > 128) {
+    throw new Error("Isi SEED_ADMIN_PASSWORD di .env dengan 4-128 karakter agar akun dapat login.");
+  }
+
+  let admin = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+  });
+
+  if (!admin) {
+    admin = await prisma.user.findFirst({
+      where: { username: { equals: username, mode: "insensitive" } },
+    });
+
+    // Reuse the seeded admin when its configured email changes.
+    // Do not take over a non-admin account that owns the same username.
+    if (admin && admin.role !== UserRole.ADMIN) {
+      throw new Error(
+        `Username "${username}" sudah digunakan akun non-admin. Gunakan SEED_ADMIN_USERNAME lain.`,
+      );
+    }
+  }
 
   const passwordHash = await bcrypt.hash(password, 12);
   await prisma.user.upsert({
-    where: { email },
-    update: { passwordHash, active: true, role: UserRole.ADMIN },
+    where: admin ? { id: admin.id } : { email },
+    update: { email, passwordHash, active: true, role: UserRole.ADMIN },
     create: {
       email,
-      username: "admin",
+      username,
       passwordHash,
       active: true,
       role: UserRole.ADMIN,

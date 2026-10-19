@@ -7,8 +7,15 @@ npm-debug.log*
 
 # Local environment files
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+
+# Server-specific Compose overrides and Tailscale state stay on that server.
+compose.override.yml
+compose.override.yaml
+docker-compose.override.yml
+docker-compose.override.yaml
+.tailscale/
 
 # Runtime storage (keep directory placeholders only)
 storage/attendance/**
@@ -19,3 +26,5 @@ storage/leave/**
 
 storage/backup/**
 !storage/backup/.gitkeep
+
+storage/attendance-archive/

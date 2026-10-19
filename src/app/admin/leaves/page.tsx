@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import LeaveReviewActions from "@/components/admin/LeaveReviewActions";
 import LeaveBalanceForm from "@/components/admin/LeaveBalanceForm";
 import LeaveAdjustmentForm from "@/components/admin/LeaveAdjustmentForm";
+import LeaveDeleteButton from "@/components/admin/LeaveDeleteButton";
 
 function formatDate(value: Date) {
   return new Intl.DateTimeFormat("id-ID", {
@@ -394,6 +395,11 @@ export default async function LeavesPage({ searchParams }: Props) {
                         hasApprovedDocument={Boolean(item.approvedDocument)}
                       />
                     )}
+                    <LeaveDeleteButton
+                      leaveRequestId={item.id}
+                      employeeName={item.employee.name}
+                      period={`${formatDate(item.startDate)} - ${formatDate(item.endDate)}`}
+                    />
                   </div>
                 ))}
               </div>

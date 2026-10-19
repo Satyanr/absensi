@@ -101,6 +101,7 @@ DATABASE_URL=postgresql://absensi:change-me-local-only@localhost:5432/absensi?sc
 SEED_ADMIN_EMAIL=admin@example.local
 SEED_ADMIN_PASSWORD=ChangeMe123!
 SEED_ADMIN_NAME=Administrator
+SEED_ADMIN_USERNAME=admin
 ```
 
 Konfigurasi opsional:
@@ -200,7 +201,7 @@ npm ci
 npm run check
 ```
 
-`npm run check` menjalankan ESLint dan production build.
+`npm run check` menjalankan ESLint, pengujian, dan production build (Node 22.18+).
 
 Untuk perubahan Docker/dependency:
 
@@ -210,6 +211,11 @@ docker compose build --no-cache app
 ```
 
 # Update Repository yang Sudah Pernah Di-clone
+
+Untuk **server aktif dengan Tailscale Serve HTTPS**, ikuti
+[panduan update server](docs/SERVER_UPDATE.md). `git pull` tidak mengubah
+pengaturan Tailscale di host dan tidak menimpa `.env` lokal. File Docker/Compose
+yang dilacak Git tetap perlu ditinjau sebelum container dibuat ulang.
 
 Development lokal:
 
@@ -245,15 +251,18 @@ Service `backup` berjalan setiap 24 jam dan menghapus backup lebih lama dari 14 
 storage/backup/db-YYYYMMDD-HHMMSS.dump
 storage/backup/photos-YYYYMMDD-HHMMSS.tar.gz
 storage/backup/leave-YYYYMMDD-HHMMSS.tar.gz
+storage/backup/archive-photos-YYYYMMDD-HHMMSS.tar.gz
 ```
 
 Simpan salinan backup penting di luar device/server utama.
 
 # Cloudflare Quick Tunnel
 
-Untuk development/testing:
+Untuk development/testing, aktifkan profil opsional (tidak diperlukan jika
+server sudah memakai Tailscale Serve):
 
 ```bash
+docker compose --profile cloudflare up -d tunnel
 docker compose logs tunnel
 ```
 
@@ -280,12 +289,22 @@ Lokasi Jakarta, Bandung, Jogja, dan Surabaya hanya dibuat jika koordinat environ
 
 # Scripts
 
+Admin dan Leader dapat menghapus pengajuan Cuti, Izin, dan Sakit melalui
+tombol **Hapus Pengajuan** di `/admin/leaves`, termasuk pengajuan yang sudah
+disetujui. Penghapusan mengembalikan saldo yang dipakai cuti tersebut per tahun,
+menghapus status ketidakhadirannya dari laporan, serta membersihkan notifikasi
+dan lampiran yang sudah tidak dipakai. Catatan kehadiran nyata dan riwayat audit
+tetap tersimpan. Jika seluruh cuti yang terpakai dihapus, sisa saldo kembali
+ke hak awal (misalnya 12 hari); cuti lain yang masih berlaku tetap dihitung.
+
 ```bash
 npm run dev          # Development server
 npm run check        # ESLint + production build
 npm run build        # Production build
 npm run start        # Production server
 npm run lint         # ESLint
+npm test             # Pengujian logika absensi, cuti, dan backup
+npm run test:leave-delete # Uji penghapusan pengajuan dan pengembalian saldo (Node 22.18+)
 npm run db:generate  # Prisma generate
 npm run db:migrate   # Prisma migrate dev
 npm run db:deploy    # Prisma migrate deploy

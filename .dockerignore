@@ -1,8 +1,12 @@
 node_modules
 .next
 .git
-.env
+.env*
+!.env.example
+compose.override.yml
+compose.override.yaml
+docker-compose.override.yml
+docker-compose.override.yaml
+.tailscale
 
-storage/attendance
-storage/leave
-storage/backup
+storage

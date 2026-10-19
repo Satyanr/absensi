@@ -53,7 +53,8 @@ export async function getCurrentUser() {
   });
 
   if (!session || session.expiresAt <= new Date() || !session.user.active) {
-    if (session) await prisma.session.delete({ where: { id: session.id } });
+    // Several page requests can encounter the same expired session together.
+    if (session) await prisma.session.deleteMany({ where: { id: session.id } });
     return null;
   }
 
